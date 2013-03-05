@@ -207,7 +207,7 @@ class HeaderFooterItem(object):
                     try:
                         self.font_size = int(item)
                     except:
-                        pass
+                        textArray.append('&%s' % item)
         self.text = ''.join(textArray)
 
 class HeaderFooter(object):
