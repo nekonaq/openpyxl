@@ -24,14 +24,33 @@
 # @author: see AUTHORS file
 
 from datetime import date
+import os
 
 from nose.tools import eq_, assert_raises, assert_true, assert_false
 
-from openpyxl.tests.helper import get_xml, assert_equals_string, compare_xml
-from openpyxl.shared.xmltools import Element
-from openpyxl.writer.charts import ChartWriter
+from openpyxl.tests.helper import (get_xml,
+                                   TMPDIR,
+                                   DATADIR,
+                                   make_tmpdir,
+                                   compare_xml
+                                   )
+
+from openpyxl.shared.xmltools import Element, get_document_content
+from openpyxl.writer.charts import (ChartWriter,
+                                    PieChartWriter,
+                                    LineChartWriter,
+                                    BarChartWriter,
+                                    ScatterChartWriter
+                                    )
 from openpyxl.workbook import Workbook
-from openpyxl.chart import Chart, BarChart, ScatterChart, Serie, Reference
+from openpyxl.chart import (Chart,
+                            BarChart,
+                            ScatterChart,
+                            Serie,
+                            Reference,
+                            PieChart,
+                            LineChart
+                            )
 from openpyxl.style import Color
 from re import sub
 from openpyxl.drawing import Image
@@ -352,6 +371,14 @@ class TestChart(object):
         eq_(c.margin_left , 0.03375)
 
 
+class TestLineChart(object):
+
+    def test_ctor(self):
+        from openpyxl.chart import LineChart
+        c = LineChart()
+        eq_(c.type, Chart.LINE_CHART)
+
+
 class TestChartWriter(object):
 
     def setup(self):
@@ -365,7 +392,7 @@ class TestChartWriter(object):
         self.chart.title = 'TITLE'
         self.chart.add_serie(Serie(Reference(ws, (0, 0), (10, 0))))
         self.chart._series[-1].color = Color.GREEN
-        self.cw = ChartWriter(self.chart)
+        self.cw = BarChartWriter(self.chart)
         self.root = Element('test')
 
     def make_worksheet(self):
@@ -473,7 +500,7 @@ class TestChartWriter(object):
         serie = Serie(values=values, labels=labels)
         c = BarChart()
         c.add_serie(serie)
-        cw = ChartWriter(c)
+        cw = BarChartWriter(c)
         root = Element('test')
         cw._write_serial(root, c._series[0].labels)
         expected = """<?xml version='1.0' encoding='UTF-8'?><test xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:numRef><c:f>'data'!$A$1:$J$1</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="10" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt></c:numCache></c:numRef></test>"""
@@ -491,7 +518,7 @@ class TestChartWriter(object):
         serie = Serie(values=values, labels=labels)
         c = BarChart()
         c.add_serie(serie)
-        cw = ChartWriter(c)
+        cw = BarChartWriter(c)
         root = Element('test')
         cw._write_serial(root, c._series[0].labels)
 
@@ -508,14 +535,14 @@ class TestScatterChartWriter(object):
 
         wb = Workbook()
         ws = wb.get_active_sheet()
-        ws.title = 'data'
+        ws.title = 'Scatter'
         for i in range(10):
             ws.cell(row=i, column=0).value = i
             ws.cell(row=i, column=1).value = i
         self.scatterchart = ScatterChart()
         self.scatterchart.add_serie(Serie(Reference(ws, (0, 0), (10, 0)),
-                         xvalues=Reference(ws, (0, 1), (10, 1))))
-        self.cw = ChartWriter(self.scatterchart)
+                                          xvalues=Reference(ws, (0, 1), (10, 1))))
+        self.cw = ScatterChartWriter(self.scatterchart)
         self.root = Element('test')
 
     def test_write_xaxis(self):
@@ -539,7 +566,7 @@ class TestScatterChartWriter(object):
     def test_write_series(self):
 
         self.cw._write_series(self.root)
-        expected = """<?xml version='1.0' encoding='UTF-8'?><test xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:ser><c:idx val="0" /><c:order val="0" /><c:xVal><c:numRef><c:f>\'data\'!$B$1:$B$11</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="11" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt><c:pt idx="10"><c:v>None</c:v></c:pt></c:numCache></c:numRef></c:xVal><c:yVal><c:numRef><c:f>\'data\'!$A$1:$A$11</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="11" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt><c:pt idx="10"><c:v>None</c:v></c:pt></c:numCache></c:numRef></c:yVal></c:ser></test>"""
+        expected = """<?xml version='1.0' encoding='UTF-8'?><test xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:ser><c:idx val="0" /><c:order val="0" /><c:xVal><c:numRef><c:f>\'Scatter\'!$B$1:$B$11</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="11" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt><c:pt idx="10"><c:v>None</c:v></c:pt></c:numCache></c:numRef></c:xVal><c:yVal><c:numRef><c:f>\'Scatter\'!$A$1:$A$11</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="11" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt><c:pt idx="10"><c:v>None</c:v></c:pt></c:numCache></c:numRef></c:yVal></c:ser></test>"""
         xml = get_xml(self.root)
         diff = compare_xml(xml, expected)
         assert_false(diff, diff)
@@ -563,11 +590,121 @@ class TestScatterChartWriter(object):
     def test_write_chart(self):
 
         self.cw._write_chart(self.root)
+        xml = get_xml(self.root)
         # Truncate floats because results differ with Python >= 3.2 and <= 3.1
-        test_xml = sub('([0-9][.][0-9]{4})[0-9]*', '\\1', get_xml(self.root))
-        expected = """<?xml version='1.0' encoding='UTF-8'?><test xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart><c:plotArea><c:layout><c:manualLayout><c:layoutTarget val="inner" /><c:xMode val="edge" /><c:yMode val="edge" /><c:x val="0.0337" /><c:y val="0.31" /><c:w val="0.6" /><c:h val="0.6" /></c:manualLayout></c:layout><c:scatterChart><c:scatterStyle val="lineMarker" /><c:ser><c:idx val="0" /><c:order val="0" /><c:xVal><c:numRef><c:f>\'data\'!$B$1:$B$11</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="11" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt><c:pt idx="10"><c:v>None</c:v></c:pt></c:numCache></c:numRef></c:xVal><c:yVal><c:numRef><c:f>\'data\'!$A$1:$A$11</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="11" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt><c:pt idx="10"><c:v>None</c:v></c:pt></c:numCache></c:numRef></c:yVal></c:ser><c:axId val="60871424" /><c:axId val="60873344" /></c:scatterChart><c:valAx><c:axId val="60871424" /><c:scaling><c:orientation val="minMax" /><c:max val="10.0" /><c:min val="0.0" /></c:scaling><c:axPos val="b" /><c:majorGridlines /><c:numFmt formatCode="General" sourceLinked="1" /><c:tickLblPos val="nextTo" /><c:crossAx val="60873344" /><c:crosses val="autoZero" /><c:auto val="1" /><c:lblAlgn val="ctr" /><c:lblOffset val="100" /><c:crossBetween val="midCat" /><c:majorUnit val="2.0" /></c:valAx><c:valAx><c:axId val="60873344" /><c:scaling><c:orientation val="minMax" /><c:max val="10.0" /><c:min val="0.0" /></c:scaling><c:axPos val="l" /><c:majorGridlines /><c:numFmt formatCode="General" sourceLinked="1" /><c:tickLblPos val="nextTo" /><c:crossAx val="60871424" /><c:crosses val="autoZero" /><c:crossBetween val="midCat" /><c:majorUnit val="2.0" /></c:valAx></c:plotArea><c:legend><c:legendPos val="r" /><c:layout /></c:legend><c:plotVisOnly val="1" /></c:chart></test>"""
-        diff = compare_xml(test_xml, expected)
+        xml = sub('([0-9][.][0-9]{4})[0-9]*', '\\1', xml)
+
+        expected = """<?xml version='1.0' encoding='UTF-8'?><test xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart><c:plotArea><c:layout><c:manualLayout><c:layoutTarget val="inner" /><c:xMode val="edge" /><c:yMode val="edge" /><c:x val="0.0337" /><c:y val="0.31" /><c:w val="0.6" /><c:h val="0.6" /></c:manualLayout></c:layout><c:scatterChart><c:scatterStyle val="lineMarker" /><c:ser><c:idx val="0" /><c:order val="0" /><c:xVal><c:numRef><c:f>'Scatter'!$B$1:$B$11</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="11" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt><c:pt idx="10"><c:v>None</c:v></c:pt></c:numCache></c:numRef></c:xVal><c:yVal><c:numRef><c:f>'Scatter'!$A$1:$A$11</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="11" /><c:pt idx="0"><c:v>0</c:v></c:pt><c:pt idx="1"><c:v>1</c:v></c:pt><c:pt idx="2"><c:v>2</c:v></c:pt><c:pt idx="3"><c:v>3</c:v></c:pt><c:pt idx="4"><c:v>4</c:v></c:pt><c:pt idx="5"><c:v>5</c:v></c:pt><c:pt idx="6"><c:v>6</c:v></c:pt><c:pt idx="7"><c:v>7</c:v></c:pt><c:pt idx="8"><c:v>8</c:v></c:pt><c:pt idx="9"><c:v>9</c:v></c:pt><c:pt idx="10"><c:v>None</c:v></c:pt></c:numCache></c:numRef></c:yVal></c:ser><c:axId val="60871424" /><c:axId val="60873344" /></c:scatterChart><c:valAx><c:axId val="60871424" /><c:scaling><c:orientation val="minMax" /><c:max val="10.0" /><c:min val="0.0" /></c:scaling><c:axPos val="b" /><c:majorGridlines /><c:numFmt formatCode="General" sourceLinked="1" /><c:tickLblPos val="nextTo" /><c:crossAx val="60873344" /><c:crosses val="autoZero" /><c:auto val="1" /><c:lblAlgn val="ctr" /><c:lblOffset val="100" /><c:crossBetween val="midCat" /><c:majorUnit val="2.0" /></c:valAx><c:valAx><c:axId val="60873344" /><c:scaling><c:orientation val="minMax" /><c:max val="10.0" /><c:min val="0.0" /></c:scaling><c:axPos val="l" /><c:majorGridlines /><c:numFmt formatCode="General" sourceLinked="1" /><c:tickLblPos val="nextTo" /><c:crossAx val="60871424" /><c:crosses val="autoZero" /><c:crossBetween val="midCat" /><c:majorUnit val="2.0" /></c:valAx></c:plotArea><c:legend><c:legendPos val="r" /><c:layout /></c:legend><c:plotVisOnly val="1" /></c:chart></test>"""
+        diff = compare_xml(xml, expected)
         assert_false(diff, diff)
+
+    def test_serialised(self):
+        xml = self.cw.write()
+        fname = os.path.join(DATADIR, "writer", "expected", "ScatterChart.xml")
+        with open(fname) as expected:
+            diff = compare_xml(xml, expected.read())
+            assert_false(diff, diff)
+
+
+class TestPieChartWriter(object):
+
+    def setup(self):
+        """Setup a worksheet with one column of data and a pie chart"""
+        wb = Workbook()
+        ws = wb.get_active_sheet()
+        ws.title = 'Pie'
+        for i in range(1, 5):
+            ws.append([i])
+        self.piechart = PieChart()
+        values = Reference(ws, (0, 0), (9, 0))
+        series = Serie(values, labels=values)
+        self.piechart.add_serie(series)
+        ws.add_chart(self.piechart)
+        self.cw = PieChartWriter(self.piechart)
+        self.root = Element('test')
+
+    def test_write_chart(self):
+        """check if some characteristic tags of PieChart are there"""
+        self.cw._write_chart(self.root)
+        tagnames = ['test', '{http://schemas.openxmlformats.org/drawingml/2006/chart}pieChart', '{http://schemas.openxmlformats.org/drawingml/2006/chart}varyColors']
+        chart_tags = [e.tag for e in self.root.iter()]
+        for tag in tagnames:
+            assert_true(tag in chart_tags, tag)
+
+        assert_false('c:catAx' in chart_tags)
+
+    def test_serialised(self):
+        """Check the serialised file against sample"""
+        xml = self.cw.write()
+        expected_file = os.path.join(DATADIR, "writer", "expected", "piechart.xml")
+        with open(expected_file) as expected:
+            diff = compare_xml(xml, expected.read())
+            assert_false(diff, diff)
+
+
+class TestLineChartWriter(object):
+
+    def setup(self):
+        """Setup a worksheet with one column of data and a line chart"""
+        wb = Workbook()
+        ws = wb.get_active_sheet()
+        ws.title = 'Line'
+        for i in range(1, 5):
+            ws.append([i])
+        self.piechart = LineChart()
+        self.piechart.add_serie(Serie(Reference(ws, (0, 0), (4, 0))))
+        self.cw = LineChartWriter(self.piechart)
+        self.root = Element('test')
+
+    def test_write_chart(self):
+        """check if some characteristic tags of LineChart are there"""
+        self.cw._write_chart(self.root)
+        tagnames = ['test', '{http://schemas.openxmlformats.org/drawingml/2006/chart}lineChart', '{http://schemas.openxmlformats.org/drawingml/2006/chart}valAx', '{http://schemas.openxmlformats.org/drawingml/2006/chart}catAx']
+        chart_tags = [e.tag for e in self.root.iter()]
+        for tag in tagnames:
+            assert_true(tag in chart_tags, tag)
+
+    def test_serialised(self):
+        """Check the serialised file against sample"""
+        xml = self.cw.write()
+        expected_file = os.path.join(DATADIR, "writer", "expected", "LineChart.xml")
+        with open(expected_file) as expected:
+            diff = compare_xml(xml, expected.read())
+            assert_false(diff, diff)
+
+
+class TestBarChartWriter(object):
+    """"""
+    def setup(self):
+        """Setup a worksheet with one column of data and a bar chart"""
+        wb = Workbook()
+        ws = wb.get_active_sheet()
+        ws.title = 'Numbers'
+        for i in range(10):
+            ws.append([i])
+        self.piechart = BarChart()
+        self.piechart.add_serie(Serie(Reference(ws, (0, 0), (9, 0))))
+        self.cw = BarChartWriter(self.piechart)
+        self.root = Element('test')
+
+    def test_write_chart(self):
+        """check if some characteristic tags of LineChart are there"""
+        self.cw._write_chart(self.root)
+        tagnames = ['test',
+                    '{http://schemas.openxmlformats.org/drawingml/2006/chart}barChart',
+                    '{http://schemas.openxmlformats.org/drawingml/2006/chart}valAx',
+                    '{http://schemas.openxmlformats.org/drawingml/2006/chart}catAx']
+        chart_tags = [e.tag for e in self.root.iter()]
+        for tag in tagnames:
+            assert_true(tag in chart_tags, tag)
+
+    def test_serialised(self):
+        """Check the serialised file against sample"""
+        xml = self.cw.write()
+        expected_file = os.path.join(DATADIR, "writer", "expected", "BarChart.xml")
+        with open(expected_file) as expected:
+            diff = compare_xml(xml, expected.read())
+            assert_false(diff, diff)
 
 
 class TestAnchoring(object):
