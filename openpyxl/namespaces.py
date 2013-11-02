@@ -1,4 +1,5 @@
-# Copyright (c) 2010-2011 openpyxl
+# coding=UTF-8
+# Copyright (c) 2010-2013 openpyxl
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,21 +21,9 @@
 #
 # @license: http://www.opensource.org/licenses/mit-license.php
 # @author: see AUTHORS file
-from tempfile import NamedTemporaryFile
 
-from openpyxl.shared.compat.elementtree import iterparse
-from openpyxl.shared.compat.allany import all, any
-from openpyxl.shared.compat.strings import basestring, unicode, StringIO, file, BytesIO
-from openpyxl.shared.compat.numbers import long
-from openpyxl.shared.compat.itertools import xrange, ifilter, iteritems
+# Namespace constants
 
-# Python 2.6
-try:
-    from collections import OrderedDict
-except ImportError:
-    from openpyxl.shared.compat.odict import OrderedDict
-
-try:
-    from xml.etree.ElementTree import register_namespace
-except ImportError:
-    from openpyxl.shared.compat.elementtree import register_namespace
+CHART_NS = {'xmlns:c':"http://schemas.openxmlformats.org/drawingml/2006/chart"}
+A_NS = {'xmlns:a':"http://schemas.openxmlformats.org/drawingml/2006/main"}
+REL_NS = {'xmlns:r':"http://schemas.openxmlformats.org/officeDocument/2006/relationships"}
