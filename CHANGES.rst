@@ -1,4 +1,37 @@
-1.8.4 (2014-02-25)
+1.9.0 (unreleased)
+==================
+
+Major changes
+-------------
+
+* Type inference is disabled by default
+* RawCell renamed ReadOnlyCell
+* ReadOnlyCell.internal_value and ReadOnlyCell.value now behave the same as Cell
+* Provide no size information on unsized worksheets
+
+
+Minor changes
+-------------
+
+* All tests converted to pytest
+* Pyflakes used for static code analysis
+
+
+Pull requests
+-------------
+#70 Add filterColumn, sortCondition support to AutoFilter (SHIBUKAWA Yoshiki)
+#82 Update API for conditional formatting
+
+
+Bug fixes
+---------
+#46  - ColumnDimension style error
+#137 - Workbooks with chartsheets
+#269 - Handling unsized worksheets in IterableWorksheet
+#275 - Handling auto filters where there are only custom filters
+
+
+1.8.4 (unreleased)
 ==================
 
 Bugfixes

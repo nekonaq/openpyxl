@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright (c) 2010-2014 openpyxl
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,8 +28,8 @@ from .hashable import HashableObject
 class Protection(HashableObject):
     """Protection options for use in styles."""
     PROTECTION_INHERIT = 'inherit'
-    PROTECTION_PROTECTED = 'protected'
-    PROTECTION_UNPROTECTED = 'unprotected'
+    PROTECTION_PROTECTED = True
+    PROTECTION_UNPROTECTED = False
 
     __fields__ = ('locked',
                   'hidden')
