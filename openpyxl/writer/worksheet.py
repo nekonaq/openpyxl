@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright (c) 2010-2014 openpyxl
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,41 +25,39 @@
 """Write worksheets to xml representations."""
 
 # Python stdlib imports
-import decimal, re
+import decimal
 
 # compatibility imports
 
-from openpyxl.shared.compat import BytesIO, StringIO, long
+from openpyxl.compat import StringIO, long
 
 # package imports
-from openpyxl.cell import coordinate_from_string, column_index_from_string
-from openpyxl.shared.xmltools import (
+from openpyxl.cell import coordinate_from_string, column_index_from_string, COORD_RE
+from openpyxl.xml.functions import (
     Element,
     SubElement,
     XMLGenerator,
-    ElementTree,
     get_document_content,
     start_tag,
     end_tag,
     tag,
     fromstring,
-    tostring,
-    register_namespace,
-    )
-from openpyxl.shared.ooxml import (
+)
+from openpyxl.xml.constants import (
     SHEET_MAIN_NS,
     PKG_REL_NS,
     REL_NS,
     COMMENTS_NS,
     VML_NS
 )
-from openpyxl.shared.compat.itertools import iteritems, iterkeys
-from openpyxl.styles.formatting import ConditionalFormatting
+from openpyxl.compat.itertools import iteritems, iterkeys
+from openpyxl.formatting import ConditionalFormatting
 
 
 def row_sort(cell):
     """Translate column names for sorting."""
     return column_index_from_string(cell.column)
+
 
 def write_etree(doc, element):
     start_tag(doc, element.tag, element)
@@ -66,7 +65,8 @@ def write_etree(doc, element):
         write_etree(doc, e)
     end_tag(doc, element.tag)
 
-def write_worksheet(worksheet, string_table, style_table):
+
+def write_worksheet(worksheet, shared_strings, style_table):
     """Write a worksheet to an xml file."""
     if worksheet.xml_source:
         vba_root = fromstring(worksheet.xml_source)
@@ -75,35 +75,36 @@ def write_worksheet(worksheet, string_table, style_table):
     xml_file = StringIO()
     doc = XMLGenerator(out=xml_file, encoding='utf-8')
     start_tag(doc, 'worksheet',
-            {'xmlns': SHEET_MAIN_NS,
-            'xmlns:r': REL_NS})
+              {'xmlns': SHEET_MAIN_NS,
+               'xmlns:r': REL_NS})
     if vba_root is not None:
         el = vba_root.find('{%s}sheetPr' % SHEET_MAIN_NS)
         if el is not None:
-                codename =el.get('codeName', worksheet.title)
-                start_tag(doc, 'sheetPr', {"codeName": codename})
+            codename = el.get('codeName', worksheet.title)
+            start_tag(doc, 'sheetPr', {"codeName": codename})
         else:
-                start_tag(doc, 'sheetPr')
+            start_tag(doc, 'sheetPr')
     else:
         start_tag(doc, 'sheetPr')
     tag(doc, 'outlinePr',
-            {'summaryBelow': '%d' % (worksheet.show_summary_below),
-            'summaryRight': '%d' % (worksheet.show_summary_right)})
+        {'summaryBelow': '%d' % (worksheet.show_summary_below),
+         'summaryRight': '%d' % (worksheet.show_summary_right)})
     if worksheet.page_setup.fitToPage:
-        tag(doc, 'pageSetUpPr', {'fitToPage':'1'})
+        tag(doc, 'pageSetUpPr', {'fitToPage': '1'})
     end_tag(doc, 'sheetPr')
     tag(doc, 'dimension', {'ref': '%s' % worksheet.calculate_dimension()})
     write_worksheet_sheetviews(doc, worksheet)
-    tag(doc, 'sheetFormatPr', {'defaultRowHeight': '15'})
+    tag(doc, 'sheetFormatPr', {'defaultRowHeight': '15', 'baseColWidth':'10'})
     write_worksheet_cols(doc, worksheet, style_table)
-    write_worksheet_data(doc, worksheet, string_table, style_table)
-    if worksheet.auto_filter:
-        tag(doc, 'autoFilter', {'ref': worksheet.auto_filter})
+    write_worksheet_data(doc, worksheet, shared_strings, style_table)
+    if worksheet.protection.enabled:
+        tag(doc, 'sheetProtection',
+            {'objects': '1', 'scenarios': '1', 'sheet': '1'})
+    write_worksheet_autofilter(doc, worksheet)
     write_worksheet_mergecells(doc, worksheet)
     write_worksheet_datavalidations(doc, worksheet)
     write_worksheet_hyperlinks(doc, worksheet)
     write_worksheet_conditional_formatting(doc, worksheet)
-
 
     options = worksheet.page_setup.options
     if options:
@@ -126,7 +127,7 @@ def write_worksheet(worksheet, string_table, style_table):
         end_tag(doc, 'headerFooter')
 
     if worksheet._charts or worksheet._images:
-        tag(doc, 'drawing', {'r:id':'rId1'})
+        tag(doc, 'drawing', {'r:id': 'rId1'})
 
     # If vba is being preserved then add a legacyDrawing element so
     # that any controls can be drawn.
@@ -145,13 +146,14 @@ def write_worksheet(worksheet, string_table, style_table):
 
     # add a legacyDrawing so that excel can draw comments
     if worksheet._comment_count > 0:
-        tag(doc, 'legacyDrawing', {'r:id':'commentsvml'})
+        tag(doc, 'legacyDrawing', {'r:id': 'commentsvml'})
 
     end_tag(doc, 'worksheet')
     doc.endDocument()
     xml_string = xml_file.getvalue()
     xml_file.close()
     return xml_string
+
 
 def write_worksheet_sheetviews(doc, worksheet):
     start_tag(doc, 'sheetViews')
@@ -192,10 +194,10 @@ def write_worksheet_cols(doc, worksheet, style_table):
     if worksheet.column_dimensions:
         start_tag(doc, 'cols')
         for column_string, columndimension in \
-                sorted(iteritems(worksheet.column_dimensions)):
+            sorted(iteritems(worksheet.column_dimensions)):
             col_index = column_index_from_string(column_string)
             col_def = {'min': str(col_index), 'max': str(col_index)}
-            if columndimension.width != -1:
+            if columndimension.width is not None:
                 col_def['customWidth'] = '1'
             if not columndimension.visible:
                 col_def['hidden'] = 'true'
@@ -205,12 +207,10 @@ def write_worksheet_cols(doc, worksheet, style_table):
                 col_def['collapsed'] = 'true'
             if columndimension.auto_size:
                 col_def['bestFit'] = 'true'
-            if columndimension.style_index and hash(columndimension.style_index) in style_table:
-                col_def['style'] = str(style_table[hash(columndimension.style_index)])
-            if columndimension.width > 0:
+            if column_string in worksheet._styles:
+                col_def['style'] = '%d' % worksheet._styles[column_string]
+            if columndimension.width is not None:
                 col_def['width'] = str(columndimension.width)
-            else:
-                col_def['width'] = '9.10'
             tag(doc, 'col', col_def)
         end_tag(doc, 'cols')
 
@@ -265,11 +265,12 @@ def write_worksheet_data(doc, worksheet, string_table, style_table):
     """Write worksheet data to xml."""
     start_tag(doc, 'sheetData')
     max_column = worksheet.get_highest_column()
-    style_id_by_hash = style_table
+    shared_styles = worksheet.parent.shared_styles
     cells_by_row = {}
     for styleCoord in iterkeys(worksheet._styles):
         # Ensure a blank cell exists if it has a style
-        worksheet.cell(styleCoord)
+        if isinstance(styleCoord, str) and COORD_RE.search(styleCoord):
+            worksheet.cell(styleCoord)
     for cell in worksheet.get_cell_collection():
         cells_by_row.setdefault(cell.row, []).append(cell)
     for row_idx in sorted(cells_by_row):
@@ -278,28 +279,30 @@ def write_worksheet_data(doc, worksheet, string_table, style_table):
                  'spans': '1:%d' % max_column}
         if not row_dimension.visible:
             attrs['hidden'] = '1'
-        if row_dimension.height > 0:
+        if row_dimension.height is not None:
             attrs['ht'] = str(row_dimension.height)
             attrs['customHeight'] = '1'
+        if row_idx in worksheet._styles:
+            attrs['s'] = '%d' % worksheet._styles[row_idx]
+            attrs['customFormat'] = '1'
         start_tag(doc, 'row', attrs)
         row_cells = cells_by_row[row_idx]
         sorted_cells = sorted(row_cells, key=row_sort)
         for cell in sorted_cells:
-            value = cell._value
-            coordinate = cell.get_coordinate()
+            value = cell.internal_value
+            coordinate = cell.coordinate
             attributes = {'r': coordinate}
             if cell.data_type != cell.TYPE_FORMULA:
                 attributes['t'] = cell.data_type
             if coordinate in worksheet._styles:
-                attributes['s'] = '%d' % style_id_by_hash[
-                        hash(worksheet._styles[coordinate])]
+                attributes['s'] = '%d' % worksheet._styles[coordinate]
 
             if value in ('', None):
                 tag(doc, 'c', attributes)
             else:
                 start_tag(doc, 'c', attributes)
                 if cell.data_type == cell.TYPE_STRING:
-                    tag(doc, 'v', body='%s' % string_table[value])
+                    tag(doc, 'v', body='%s' % string_table.index(value))
                 elif cell.data_type == cell.TYPE_FORMULA:
                     if coordinate in worksheet.formula_attributes:
                         attr = worksheet.formula_attributes[coordinate]
@@ -325,6 +328,31 @@ def write_worksheet_data(doc, worksheet, string_table, style_table):
         end_tag(doc, 'row')
     end_tag(doc, 'sheetData')
 
+def write_worksheet_autofilter(doc, worksheet):
+    auto_filter = worksheet.auto_filter
+    if auto_filter.filter_columns or auto_filter.sort_conditions:
+        start_tag(doc, 'autoFilter', {'ref': auto_filter.ref})
+        for col_id, filter_column in sorted(auto_filter.filter_columns.items()):
+            start_tag(doc, 'filterColumn', {'colId': str(col_id)})
+            if filter_column.blank:
+                start_tag(doc, 'filters', {'blank': '1'})
+            else:
+                start_tag(doc, 'filters')
+            for val in filter_column.vals:
+                tag(doc, 'filter', {'val': val})
+            end_tag(doc, 'filters')
+            end_tag(doc, 'filterColumn')
+        if auto_filter.sort_conditions:
+            start_tag(doc, 'sortState', {'ref': auto_filter.ref})
+            for sort_condition in auto_filter.sort_conditions:
+                sort_attr = {'ref': sort_condition.ref}
+                if sort_condition.descending:
+                    sort_attr['descending'] = '1'
+                tag(doc, 'sortCondtion', sort_attr)
+            end_tag(doc, 'sortState')
+        end_tag(doc, 'autoFilter')
+    elif auto_filter.ref:
+        tag(doc, 'autoFilter', {'ref': auto_filter.ref})
 
 def write_worksheet_mergecells(doc, worksheet):
     """Write merged cells to xml."""
@@ -366,8 +394,8 @@ def write_worksheet_hyperlinks(doc, worksheet):
         for cell in worksheet.get_cell_collection():
             if cell.hyperlink_rel_id is not None:
                 attrs = {'display': cell.hyperlink,
-                        'ref': cell.get_coordinate(),
-                        'r:id': cell.hyperlink_rel_id}
+                         'ref': cell.coordinate,
+                         'r:id': cell.hyperlink_rel_id}
                 tag(doc, 'hyperlink', attrs)
         end_tag(doc, 'hyperlinks')
 
@@ -381,19 +409,19 @@ def write_worksheet_rels(worksheet, drawing_id, comments_id):
             attrs['TargetMode'] = rel.target_mode
         SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
     if worksheet._charts or worksheet._images:
-        attrs = {'Id' : 'rId1',
-            'Type' : '%s/drawing' % REL_NS,
-            'Target' : '../drawings/drawing%s.xml' % drawing_id }
+        attrs = {'Id': 'rId1',
+                 'Type': '%s/drawing' % REL_NS,
+                 'Target': '../drawings/drawing%s.xml' % drawing_id}
         SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
     if worksheet._comment_count > 0:
         # there's only one comments sheet per worksheet,
         # so there's no reason to call the Id rIdx
         attrs = {'Id': 'comments',
-            'Type': COMMENTS_NS,
-            'Target' : '../comments%s.xml' % comments_id}
+                 'Type': COMMENTS_NS,
+                 'Target': '../comments%s.xml' % comments_id}
         SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
         attrs = {'Id': 'commentsvml',
-            'Type': VML_NS,
-            'Target': '../drawings/commentsDrawing%s.vml' % comments_id}
+                 'Type': VML_NS,
+                 'Target': '../drawings/commentsDrawing%s.vml' % comments_id}
         SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
     return get_document_content(root)

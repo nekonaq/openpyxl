@@ -30,8 +30,8 @@ themselves are comprised of references to cell ranges.
 >>> for i in range(10):
 >>>     ws.append(i)
 >>>
->>> from openpyxl.chart import BarChart, Reference, Series
->>> values = Reference(ws, (0, 0), (9, 0))
+>>> from openpyxl.charts import BarChart, Reference, Series
+>>> values = Reference(ws, (1, 1), (10, 1))
 >>> series = Series(values, title="First series of values")
 >>> chart = BarChart()
 >>> chart.append(series)

@@ -1,3 +1,39 @@
+1.9.0 (unreleased)
+==================
+
+Major changes
+-------------
+
+* This is last release that will support Python 3.2
+* Merged immutable styles
+* Type inference is disabled by default
+* RawCell renamed ReadOnlyCell
+* ReadOnlyCell.internal_value and ReadOnlyCell.value now behave the same as Cell
+* Provide no size information on unsized worksheets
+
+Minor changes
+-------------
+
+* All tests converted to pytest
+* Pyflakes used for static code analysis
+
+
+Pull requests
+-------------
+#70 Add filterColumn, sortCondition support to AutoFilter
+#82 Update API for conditional formatting
+#87 Add support for writing Protection styles, others
+#89 Better handling of content types when preserving macros
+
+
+Bug fixes
+---------
+#46  - ColumnDimension style error
+#137 - Workbooks with chartsheets
+#269 - Handling unsized worksheets in IterableWorksheet
+#275 - Handling auto filters where there are only custom filters
+
+
 1.8.6
 ==================
 
@@ -15,8 +51,8 @@ Bugfixes
 
 Minor changes
 -------------
-The '=' string is no longer interpreted as a formula
-When a client writes empty xml tags for cells (e.g. <c r='A1'></c>), reader will not crash
+* The '=' string is no longer interpreted as a formula
+* When a client writes empty xml tags for cells (e.g. <c r='A1'></c>), reader will not crash
 
 
 1.8.4 (2014-02-25)

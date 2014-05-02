@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright (c) 2010-2014 openpyxl
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -23,10 +24,12 @@
 
 from copy import deepcopy
 
+from openpyxl.descriptors import Typed
+
 from .alignment import Alignment
 from .borders import Borders, Border
 from .colors import Color
-from .fills import Fill
+from .fills import PatternFill, GradientFill, Fill
 from .fonts import Font
 from .hashable import HashableObject
 from .numbers import NumberFormat, is_date_format, is_builtin
@@ -41,26 +44,23 @@ class Style(HashableObject):
                   'alignment',
                   'number_format',
                   'protection')
-    __slots__ = __fields__
+    __base__ = True
 
-    def __init__(self, static=False):
-        self.static = static
-        self.font = Font()
-        self.fill = Fill()
-        self.borders = Borders()
-        self.alignment = Alignment()
-        self.number_format = NumberFormat()
-        self.protection = Protection()
+    font = Typed(expected_type=Font)
+    fill = Typed(expected_type=Fill)
+    borders = Typed(expected_type=Borders)
+    alignment = Typed(expected_type=Alignment)
+    number_format = Typed(expected_type=NumberFormat)
+    protection = Typed(expected_type=Protection)
 
-    def copy(self):
-        new_style = Style()
-        new_style.font = deepcopy(self.font)
-        new_style.fill = deepcopy(self.fill)
-        new_style.borders = deepcopy(self.borders)
-        new_style.alignment = deepcopy(self.alignment)
-        new_style.number_format = deepcopy(self.number_format)
-        new_style.protection = deepcopy(self.protection)
-        return new_style
+    def __init__(self, font=Font(), fill=PatternFill(), borders=Borders(),
+                 alignment=Alignment(), number_format=NumberFormat(),
+                 protection=Protection()):
+        self.font = font
+        self.fill = fill
+        self.borders = borders
+        self.alignment = alignment
+        self.number_format = number_format
+        self.protection = protection
 
 DEFAULTS = Style()
-

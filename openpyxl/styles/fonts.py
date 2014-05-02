@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright (c) 2010-2014 openpyxl
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,8 +22,9 @@
 # @license: http://www.opensource.org/licenses/mit-license.php
 # @author: see AUTHORS file
 
-from .colors import Color
+from openpyxl.descriptors import Strict, Float, Set, Bool, String
 from .hashable import HashableObject
+from .descriptors import Color
 
 
 class Font(HashableObject):
@@ -33,6 +35,18 @@ class Font(HashableObject):
     UNDERLINE_SINGLE = 'single'
     UNDERLINE_SINGLE_ACCOUNTING = 'singleAccounting'
 
+
+    name = String()
+    size = Float()
+    bold = Bool()
+    italic = Bool()
+    superscript = Bool()
+    subscript = Bool()
+    underline = Set(values=set([UNDERLINE_DOUBLE, UNDERLINE_NONE,
+                                UNDERLINE_DOUBLE_ACCOUNTING, UNDERLINE_SINGLE,
+                                UNDERLINE_SINGLE_ACCOUNTING]))
+    color = Color()
+
     __fields__ = ('name',
                   'size',
                   'bold',
@@ -42,15 +56,16 @@ class Font(HashableObject):
                   'underline',
                   'strikethrough',
                   'color')
-    __slots__ = __fields__
 
-    def __init__(self):
-        self.name = 'Calibri'
-        self.size = 11
-        self.bold = False
-        self.italic = False
-        self.superscript = False
-        self.subscript = False
-        self.underline = self.UNDERLINE_NONE
-        self.strikethrough = False
-        self.color = Color(Color.BLACK)
+    def __init__(self, name='Calibri', size=11, bold=False, italic=False,
+                 superscript=False, subscript=False, underline=UNDERLINE_NONE,
+                 strikethrough=False, color=color()):
+        self.name = name
+        self.size = size
+        self.bold = bold
+        self.italic = italic
+        self.superscript = superscript
+        self.subscript = subscript
+        self.underline = underline
+        self.strikethrough = strikethrough
+        self.color = color
