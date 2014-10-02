@@ -230,7 +230,7 @@ class Worksheet(object):
         sheets = self._parent.get_sheet_names()
         if value in sheets:
             sheets = ",".join(sheets)
-            sheet_title_regex = re.compile("(?P<title>%s)(?P<count>\d?),?" % value)
+            sheet_title_regex = re.compile("(?P<title>%s)(?P<count>\d?),?" % re.escape(value))
             matches = sheet_title_regex.findall(sheets)
             if matches:
                 # use name, but append with the next highest integer
@@ -443,7 +443,6 @@ class Worksheet(object):
         """
         # Column name cache is very important in large files.
         cache = dict((col, get_column_letter(col)) for col in range(min_col, max_col+1))
-        rows = []
         for row in range(min_row, max_row+1):
             yield tuple(self._get_cell('%s%d' % (cache[col], row))
                         for col in range(min_col, max_col+1))
@@ -699,7 +698,7 @@ class Worksheet(object):
     @property
     def rows(self):
         """Iterate over all rows in the worksheet"""
-        return tuple(row for row in self.iter_rows())
+        return tuple(self.iter_rows())
 
     @property
     def columns(self):
