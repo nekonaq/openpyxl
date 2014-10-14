@@ -42,6 +42,7 @@ from openpyxl.units import (
 from openpyxl.styles import DEFAULTS as DEFAULTS_STYLE
 from openpyxl.formatting import ConditionalFormatting
 from openpyxl.workbook.names.named_range import NamedRange
+from openpyxl.styles.colors import Color
 
 from .header_footer import HeaderFooter
 from .relationship import Relationship
@@ -137,6 +138,7 @@ class Worksheet(object):
             self.title = 'Sheet%d' % (1 + len(self._parent.worksheets))
         else:
             self.title = title
+        self._tab_color = None
         self.row_dimensions = {}
         self.column_dimensions = DimensionHolder([])
         self.page_breaks = []
@@ -218,6 +220,24 @@ class Worksheet(object):
             msg = 'Maximum 31 characters allowed in sheet title'
             raise SheetTitleException(msg)
         self._title = value
+        
+    @property
+    def tab_color(self):
+        return self._tab_color
+    
+    @tab_color.setter
+    def tab_color(self, value):
+        """ 
+        Add a color to the tab of the sheet 
+        value is a string with the following acceptable formats: 
+            - 00RRGGBB
+            - RRGGBB
+        """
+        if not isinstance(value, str):
+            raise ValueError, "Provided tab color %s should be a string following '00RRGGBB' format." % value
+        
+        colorstring = Color(rgb=value)
+        self._tab_color = colorstring.value
 
     @deprecated('this method is private and should not be called directly')
     def unique_sheet_name(self, value):
