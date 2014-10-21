@@ -49,6 +49,7 @@ from .page import PageSetup, PageMargins
 from .dimensions import ColumnDimension, RowDimension, DimensionHolder
 from .protection import SheetProtection
 from .filters import AutoFilter
+from .properties import WorksheetProperties
 
 
 def flatten(results):
@@ -170,6 +171,7 @@ class Worksheet(object):
         self.conditional_formatting = ConditionalFormatting()
         self.vba_code = {}
         self.vba_controls = None
+        self.sheet_properties = WorksheetProperties()
 
     def __repr__(self):
         return self.repr_format % self.title
@@ -177,7 +179,7 @@ class Worksheet(object):
     @property
     def parent(self):
         return self._parent
-
+    
     @property
     def encoding(self):
         return self._parent.encoding
@@ -218,7 +220,7 @@ class Worksheet(object):
             msg = 'Maximum 31 characters allowed in sheet title'
             raise SheetTitleException(msg)
         self._title = value
-
+                
     @deprecated('this method is private and should not be called directly')
     def unique_sheet_name(self, value):
         return self._unique_sheet_name(value)

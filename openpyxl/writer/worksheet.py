@@ -48,6 +48,10 @@ def write_properties(worksheet, vba_attrs):
     pr.append(summary)
     if worksheet.page_setup.fitToPage:
         pr.append(Element('pageSetUpPr', fitToPage='1'))
+        
+    if worksheet.sheet_properties.tabColor:
+        pr.append(Element('tabColor', rgb=worksheet.sheet_properties.tabColor.value))
+
     return pr
 
 
