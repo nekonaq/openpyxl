@@ -37,7 +37,10 @@ class Serialisable(_Serialiasable):
             if desc is None:
                 continue
             if tag in cls.__nested__:
-                attrib[tag] = cls._create_nested(el, tag)
+                if hasattr(desc, 'from_tree'):
+                    attrib[tag] = el
+                else:
+                    attrib[tag] = cls._create_nested(el, tag)
             else:
                 if hasattr(desc.expected_type, "from_tree"):
                     obj = desc.expected_type.from_tree(el)
@@ -66,26 +69,33 @@ class Serialisable(_Serialiasable):
             tagname = self.tagname
         attrs = dict(self)
         el = Element(tagname, attrs)
-        for n in self.__nested__:
-            value = getattr(self, n)
-            if isinstance(value, tuple):
-                if hasattr(el, 'extend'):
-                    el.extend(self._serialise_nested(value))
-                else: # py26 nolxml
-                    for _ in self._serialise_nested(value):
-                        el.append(_)
-            elif value:
-                SubElement(el, n, val=safe_string(value))
+
         for child in self.__elements__:
-            obj = getattr(self, child)
-            if isinstance(obj, tuple):
-                for v in obj:
-                    if hasattr(v, 'to_tree'):
-                        el.append(v.to_tree(tagname=child))
-                    else:
-                        SubElement(el, child).text = v
-            elif obj is not None:
-                el.append(obj.to_tree(tagname=child))
+            if child in self.__nested__:
+                desc = getattr(self.__class__, child)
+                value = getattr(self, child)
+                if hasattr(desc, "to_tree"):
+                    obj = desc.to_tree(child, value)
+                    el.append(obj)
+                elif isinstance(value, tuple):
+                    if hasattr(el, 'extend'):
+                        el.extend(self._serialise_nested(value))
+                    else: # py26 nolxml
+                        for _ in self._serialise_nested(value):
+                            el.append(_)
+                elif value:
+                    SubElement(el, child, val=safe_string(value))
+
+            else:
+                obj = getattr(self, child)
+                if isinstance(obj, tuple):
+                    for v in obj:
+                        if hasattr(v, 'to_tree'):
+                            el.append(v.to_tree(tagname=child))
+                        else:
+                            SubElement(el, child).text = safe_string(v)
+                elif obj is not None:
+                    el.append(obj.to_tree(tagname=child))
         return el
 
 
