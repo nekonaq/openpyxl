@@ -9,35 +9,32 @@ from openpyxl.xml.constants import (
     REL_NS,
     VML_NS,
 )
+from openpyxl.packaging.relationship import Relationship
 
 
-def write_rels(worksheet, drawing_id, comments_id, vba_controls_id):
+def write_rels(worksheet, drawing_id=None, comments_id=None, vba_controls_id=None):
     """Write relationships for the worksheet to xml."""
-    root = Element('{%s}Relationships' % PKG_REL_NS)
-    for rel in worksheet.relationships:
-        attrs = {'Id': rel.id, 'Type': rel.type, 'Target': rel.target}
-        if rel.target_mode:
-            attrs['TargetMode'] = rel.target_mode
-        SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
-    if worksheet._charts or worksheet._images:
-        attrs = {'Id': 'rId1',
-                 'Type': '%s/drawing' % REL_NS,
-                 'Target': '../drawings/drawing%s.xml' % drawing_id}
-        SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
+    root = Element('Relationships', xmlns=PKG_REL_NS)
+    rels = worksheet._rels
+
     if worksheet._comment_count > 0:
-        # there's only one comments sheet per worksheet,
-        # so there's no reason to call the Id rIdx
-        attrs = {'Id': 'comments',
-                 'Type': COMMENTS_NS,
-                 'Target': '../comments%s.xml' % comments_id}
-        SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
-        attrs = {'Id': 'commentsvml',
-                 'Type': VML_NS,
-                 'Target': '../drawings/commentsDrawing%s.vml' % comments_id}
-        SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
+
+        rel = Relationship(type="comments", id="comments",
+                           target='../comments%s.xml' % comments_id)
+        rels.append(rel)
+
+        rel = Relationship("type", target='../drawings/commentsDrawing%s.vml' % comments_id, id="commentsvml")
+        rel.type = VML_NS
+        rels.append(rel)
+
     if worksheet.vba_controls is not None:
-        attrs = {'Id': worksheet.vba_controls,
-                 'Type': VML_NS,
-                 'Target': '../drawings/vmlDrawing%s.vml' % vba_controls_id}
-        SubElement(root, '{%s}Relationship' % PKG_REL_NS, attrs)
+        rel = Relationship("type", target='../drawings/vmlDrawing%s.vml' %
+                           vba_controls_id, id=worksheet.vba_controls)
+        rel.type = VML_NS
+        rels.append(rel)
+
+    for idx, rel in enumerate(rels, 1):
+        rel.id = "rId{0}".format(idx)
+        root.append(rel.to_tree())
+
     return root

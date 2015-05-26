@@ -6,10 +6,7 @@ from __future__ import absolute_import
 # Python stdlib imports
 from io import BytesIO
 
-# compatibility imports
-
 from openpyxl.compat import safe_string, itervalues, iteritems
-
 from openpyxl import LXML
 
 # package imports
@@ -27,16 +24,12 @@ from openpyxl.xml.constants import (
     REL_NS,
 )
 from openpyxl.formatting import ConditionalFormatting
-from openpyxl.worksheet.datavalidation import writer
-from openpyxl.worksheet.properties import WorksheetProperties, write_sheetPr
+from openpyxl.styles.differential import DifferentialStyle
+from openpyxl.packaging.relationship import Relationship
+from openpyxl.worksheet.properties import WorksheetProperties
+from openpyxl.worksheet.hyperlink import Hyperlink
 
 from .etree_worksheet import write_cell
-
-
-def write_properties(worksheet):
-    wsp = worksheet.sheet_properties
-    pr = write_sheetPr(wsp)
-    return pr
 
 
 def write_format(worksheet):
@@ -118,37 +111,17 @@ def write_mergecells(worksheet):
 
 def write_conditional_formatting(worksheet):
     """Write conditional formatting to xml."""
+    wb = worksheet.parent
     for range_string, rules in iteritems(worksheet.conditional_formatting.cf_rules):
-        if not len(rules):
-            # Skip if there are no rules.  This is possible if a dataBar rule was read in and ignored.
-            continue
         cf = Element('conditionalFormatting', {'sqref': range_string})
+
         for rule in rules:
-            if rule['type'] == 'dataBar':
-                # Ignore - uses extLst tag which is currently unsupported.
-                continue
-            attr = {'type': rule['type']}
-            for rule_attr in ConditionalFormatting.rule_attributes:
-                if rule_attr in rule:
-                    attr[rule_attr] = str(rule[rule_attr])
-            cfr = SubElement(cf, 'cfRule', attr)
-            if 'formula' in rule:
-                for f in rule['formula']:
-                    SubElement(cfr, 'formula').text = f
-            if 'colorScale' in rule:
-                cs = SubElement(cfr, 'colorScale')
-                for cfvo in rule['colorScale']['cfvo']:
-                    SubElement(cs, 'cfvo', cfvo)
-                for color in rule['colorScale']['color']:
-                    SubElement(cs, 'color', dict(color))
-            if 'iconSet' in rule:
-                iconAttr = {}
-                for icon_attr in ConditionalFormatting.icon_attributes:
-                    if icon_attr in rule['iconSet']:
-                        iconAttr[icon_attr] = rule['iconSet'][icon_attr]
-                iconSet = SubElement(cfr, 'iconSet', iconAttr)
-                for cfvo in rule['iconSet']['cfvo']:
-                    SubElement(iconSet, 'cfvo', cfvo)
+            if rule.dxf is not None:
+                if rule.dxf != DifferentialStyle():
+                    rule.dxfId = len(wb._differential_styles)
+                    wb._differential_styles.append(rule.dxf)
+            cf.append(rule.to_tree())
+
         yield cf
 
 
@@ -160,10 +133,9 @@ def write_datavalidation(worksheet):
     if not required_dvs:
         return
 
-    dvs = Element("{%s}dataValidations" % SHEET_MAIN_NS,
-                  count=str(len(required_dvs)))
+    dvs = Element("dataValidations", count=str(len(required_dvs)))
     for dv in required_dvs:
-        dvs.append(writer(dv))
+        dvs.append(dv.to_tree())
 
     return dvs
 
@@ -182,30 +154,23 @@ def write_header_footer(worksheet):
 
 def write_hyperlinks(worksheet):
     """Write worksheet hyperlinks to xml."""
+    if not worksheet.hyperlinks:
+        return
     tag = Element('hyperlinks')
-    for cell in worksheet.get_cell_collection():
-        if cell.hyperlink_rel_id is not None:
-            attrs = {'display': cell.hyperlink,
-                     'ref': cell.coordinate,
-                     '{%s}id' % REL_NS: cell.hyperlink_rel_id}
-            tag.append(Element('hyperlink', attrs))
-    if tag.getchildren():
-        return tag
+    for cell in worksheet.hyperlinks:
+        link = cell.hyperlink
+        link.ref = cell.coordinate
+        rel = Relationship(type="hyperlink", targetMode="External", target=link.target)
+        worksheet._rels.append(rel)
+        link.id = "rId{0}".format(len(worksheet._rels))
 
-
-def write_pagebreaks(worksheet):
-    breaks = worksheet.page_breaks
-    if breaks:
-        tag = Element('rowBreaks', {'count': str(len(breaks)),
-                                     'manualBreakCount': str(len(breaks))})
-        for b in breaks:
-            tag.append(Element('brk', id=str(b), man="true", max='16383',
-                               min='0'))
-        return tag
+        tag.append(link.to_tree())
+    return tag
 
 
 def write_worksheet(worksheet, shared_strings):
     """Write a worksheet to an xml file."""
+    worksheet._rels = []
     if LXML is True:
         from .lxml_worksheet import write_cell, write_rows
     else:
@@ -216,7 +181,7 @@ def write_worksheet(worksheet, shared_strings):
     with xmlfile(out) as xf:
         with xf.element('worksheet', xmlns=SHEET_MAIN_NS):
 
-            props = write_properties(worksheet)
+            props = worksheet.sheet_properties.to_tree()
             xf.write(props)
 
             dim = Element('dimension', {'ref': '%s' % worksheet.calculate_dimension()})
@@ -256,47 +221,44 @@ def write_worksheet(worksheet, shared_strings):
             if hyper is not None:
                 xf.write(hyper)
 
-
             options = worksheet.print_options
-            if len(dict(options)) > 0:
-                new_element = options.write_xml_element()
+            if dict(options):
+                new_element = options.to_tree()
                 xf.write(new_element)
-                del new_element
 
-            margins = Element('pageMargins', dict(worksheet.page_margins))
+            margins = worksheet.page_margins.to_tree()
             xf.write(margins)
-            del margins
 
             setup = worksheet.page_setup
-            if len(dict(setup)) > 0:
-                new_element = setup.write_xml_element()
+            if dict(setup):
+                new_element = setup.to_tree()
                 xf.write(new_element)
-                del new_element
 
             hf = write_header_footer(worksheet)
             if hf is not None:
                 xf.write(hf)
 
             if worksheet._charts or worksheet._images:
-                drawing = Element('drawing', {'{%s}id' % REL_NS: 'rId1'})
+                rel = Relationship(type="drawing", target="")
+                worksheet._rels.append(rel)
+                rel.id = "rId%s" % len(worksheet._rels)
+                drawing = Element('drawing', {'{%s}id' % REL_NS: rel.id})
                 xf.write(drawing)
-                del drawing
 
             # If vba is being preserved then add a legacyDrawing element so
             # that any controls can be drawn.
             if worksheet.vba_controls is not None:
-                xml = Element("{%s}legacyDrawing" % SHEET_MAIN_NS,
-                              {"{%s}id" % REL_NS : worksheet.vba_controls})
+                xml = Element("legacyDrawing", {"{%s}id" % REL_NS :
+                                                worksheet.vba_controls})
                 xf.write(xml)
 
-            pb = write_pagebreaks(worksheet)
-            if pb is not None:
-                xf.write(pb)
+            if len(worksheet.page_breaks):
+                xf.write(worksheet.page_breaks.to_tree())
 
             # add a legacyDrawing so that excel can draw comments
             if worksheet._comment_count > 0:
-                comments = Element('{%s}legacyDrawing' % SHEET_MAIN_NS,
-                                {'{%s}id' % REL_NS: 'commentsvml'})
+                comments = Element('legacyDrawing', {'{%s}id' % REL_NS:
+                                                     'commentsvml'})
                 xf.write(comments)
 
     xml = out.getvalue()
