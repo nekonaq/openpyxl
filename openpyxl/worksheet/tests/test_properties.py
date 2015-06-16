@@ -2,13 +2,10 @@ from __future__ import absolute_import
 # Copyright (c) 2010-2015 openpyxl
 
 import pytest
-from lxml.etree import fromstring
-from openpyxl.styles.colors import Color
-from openpyxl.tests.schema import sheet_schema
-from openpyxl.tests.helper import compare_xml
-from _pytest.main import Node
 
-from openpyxl.xml.functions import safe_iterator, tostring
+from openpyxl.xml.functions import tostring, fromstring
+from openpyxl.tests.helper import compare_xml
+
 
 def test_ctor():
     from .. properties import WorksheetProperties, Outline
@@ -22,34 +19,36 @@ def test_ctor():
 
 @pytest.fixture
 def SimpleTestProps():
-    from .. properties import WorksheetProperties, PageSetupProperties
+    from .. properties import WorksheetProperties
     wsp = WorksheetProperties()
     wsp.filterMode = False
     wsp.tabColor = 'FF123456'
-    wsp.pageSetUpPr = PageSetupProperties(fitToPage=False)
+    wsp.pageSetUpPr.fitToPage = False
     return wsp
 
 
 def test_write_properties(SimpleTestProps):
-    from .. properties import write_sheetPr
 
-    content = write_sheetPr(SimpleTestProps)
-    expected = """ <s:sheetPr xmlns:s="http://schemas.openxmlformats.org/spreadsheetml/2006/main" filterMode="0">
-    <s:tabColor rgb="FF123456" />
-    <s:pageSetUpPr fitToPage="0" />
-    </s:sheetPr>"""
-    diff = compare_xml(tostring(content), expected)
+    xml = tostring(SimpleTestProps.to_tree())
+    expected = """
+    <sheetPr filterMode="0">
+      <tabColor rgb="FF123456"/>
+      <outlinePr summaryBelow="1" summaryRight="1"></outlinePr>
+      <pageSetUpPr fitToPage="0" />
+    </sheetPr>"""
+    diff = compare_xml(xml, expected)
     assert diff is None, diff
 
 
 def test_parse_properties(datadir, SimpleTestProps):
-    from .. properties import parse_sheetPr
+    from .. properties import WorksheetProperties
     datadir.chdir()
 
     with open("sheetPr2.xml") as src:
         content = src.read()
 
-    parseditem = parse_sheetPr(fromstring(content))
+    xml = fromstring(content)
+    parseditem = WorksheetProperties.from_tree(xml)
     assert dict(parseditem) == dict(SimpleTestProps)
     assert parseditem.tabColor == SimpleTestProps.tabColor
     assert dict(parseditem.pageSetUpPr) == dict(SimpleTestProps.pageSetUpPr)
