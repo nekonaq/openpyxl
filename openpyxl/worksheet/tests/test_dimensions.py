@@ -6,10 +6,6 @@ import pytest
 from openpyxl.utils.indexed_list import IndexedList
 from openpyxl.styles.styleable import StyleId
 
-def test_invalid_dimension_ctor():
-    from .. dimensions import Dimension
-    with pytest.raises(TypeError):
-        Dimension()
 
 class DummyWorkbook:
 
@@ -17,7 +13,7 @@ class DummyWorkbook:
         self.shared_styles = IndexedList()
         self._cell_styles = IndexedList()
         self._cell_styles.add(StyleId())
-        self._cell_styles.add(StyleId(fontId=10, numFmtId=0, borderId=0, fillId=0, protectionId=0, alignmentId=0))
+        self._cell_styles.add(StyleId(fontId=10))
 
     def get_sheet_names(self):
         return []
@@ -29,17 +25,17 @@ class DummyWorksheet:
         self.parent = DummyWorkbook()
 
 
-def test_dimension():
-    from .. dimensions import Dimension
-    with pytest.raises(TypeError):
-        Dimension()
-
-
 def test_dimension_interface():
     from .. dimensions import Dimension
     d = Dimension(1, True, 1, False, DummyWorksheet())
     assert isinstance(d.parent, DummyWorksheet)
     assert dict(d) == {'hidden': '1', 'outlineLevel': '1'}
+
+
+def test_invalid_dimension_ctor():
+    from .. dimensions import Dimension
+    with pytest.raises(TypeError):
+        Dimension()
 
 
 @pytest.mark.parametrize("key, value, expected",
@@ -86,3 +82,19 @@ def test_group_columns_collapse():
     dims.group('A', 'C', 1, hidden=True)
     group = list(dims.values())[0]
     assert group.hidden
+
+
+def test_column_dimension():
+    from ..worksheet import Worksheet
+    from .. dimensions import ColumnDimension
+    ws = Worksheet(parent_workbook=DummyWorkbook())
+    cols = ws.column_dimensions
+    assert isinstance(cols['A'], ColumnDimension)
+
+
+def test_row_dimension():
+    from ..worksheet import Worksheet
+    from ..dimensions import RowDimension
+    ws = Worksheet(parent_workbook=DummyWorkbook())
+    row_info = ws.row_dimensions
+    assert isinstance(row_info[1], RowDimension)
