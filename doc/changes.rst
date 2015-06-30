@@ -1,3 +1,14 @@
+2.4.0 (unreleased)
+==================
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from DataValidation
+* Convert AutoFilter to Serialisable and extend support for filters
+
+
 2.3.0-b1 (2015-06-29)
 =====================
 
