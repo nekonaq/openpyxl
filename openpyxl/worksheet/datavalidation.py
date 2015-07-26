@@ -49,6 +49,8 @@ def collapse_cell_addresses(cells, input_ranges=()):
 
     return " ".join(ranges)
 
+from .worksheet import rows_from_range
+
 
 def expand_cell_ranges(range_string):
     """
@@ -134,52 +136,21 @@ class DataValidation(Serialisable):
         self.error = error
         self.prompt = prompt
         self.errorTitle = errorTitle
+        self.__attrs__ = ('type', 'allowBlank', 'operator', 'sqref',
+                          'showInputMessage', 'showErrorMessage', 'errorTitle', 'error',
+                          'errorStyle', 'promptTitle', 'prompt')
 
-    def to_tree(self, tagname=None):
-        attrs = dict(self)
-        el = Element(self.tagname, attrs)
-        for n in self.__nested__:
-            value = getattr(self, n)
-            if value:
-                SubElement(el, n).text = value
-        return el
-
-
-    @deprecated("Use DataValidation.add(). Will be removed in 2.4")
-    def add_cell(self, cell):
-        """Adds a openpyxl.cell to this validator"""
-        self.add(cell)
 
     def add(self, cell):
         """Adds a openpyxl.cell to this validator"""
         self.cells.add(cell.coordinate)
 
-    @deprecated("Set DataValidation.ErrorTitle and DataValidation.error Will be removed in 2.4")
-    def set_error_message(self, error, error_title="Validation Error"):
-        """Creates a custom error message, displayed when a user changes a cell
-           to an invalid value"""
-        self.errorTitle = error_title
-        self.error = error
-
-    @deprecated("Set DataValidation.PromptTitle and DataValidation.prompt Will be removed in 2.4")
-    def set_prompt_message(self, prompt, prompt_title="Validation Prompt"):
-        """Creates a custom prompt message"""
-        self.promptTitle = prompt_title
-        self.prompt = prompt
 
     @property
     def sqref(self):
         return collapse_cell_addresses(self.cells, self.ranges)
 
+
     @sqref.setter
     def sqref(self, range_string):
         self.cells = expand_cell_ranges(range_string)
-
-    def __iter__(self):
-        for attr in ('type', 'allowBlank', 'operator', 'sqref',
-                     'showInputMessage', 'showErrorMessage', 'errorTitle', 'error',
-                     'errorStyle',
-                     'promptTitle', 'prompt'):
-            value = getattr(self, attr)
-            if value is not None:
-                yield attr, safe_string(value)
