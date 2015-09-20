@@ -46,11 +46,12 @@ from openpyxl.formatting import ConditionalFormatting
 from openpyxl.workbook.names.named_range import NamedRange
 from openpyxl.utils.bound_dictionary import BoundDictionary
 
+from .datavalidation import DataValidationList
 from .header_footer import HeaderFooter
 from .page import PrintPageSetup, PageMargins, PrintOptions
 from .dimensions import ColumnDimension, RowDimension, DimensionHolder
 from .protection import SheetProtection
-from .filters import AutoFilter
+from .filters import AutoFilter, SortState
 from .views import SheetView, Pane, Selection
 from .properties import WorksheetProperties
 from .pagebreak import PageBreak
@@ -131,7 +132,7 @@ class Worksheet(object):
         self._comment_count = 0
         self._merged_cells = []
         self.hyperlinks = set()
-        self._data_validations = []
+        self.data_validations = DataValidationList()
         self.sheet_state = self.SHEETSTATE_VISIBLE
         self.page_setup = PrintPageSetup(worksheet=self)
         self.print_options = PrintOptions()
@@ -141,7 +142,8 @@ class Worksheet(object):
         self.protection = SheetProtection()
 
         self._current_row = 0
-        self._auto_filter = AutoFilter()
+        self.auto_filter = AutoFilter()
+        self.sort_state = SortState()
         self._freeze_panes = None
         self.paper_size = None
         self.formula_attributes = {}
@@ -249,16 +251,6 @@ class Worksheet(object):
             raise SheetTitleException(msg)
         self._title = value
 
-
-    @property
-    def auto_filter(self):
-        """Return :class:`~openpyxl.worksheet.AutoFilter` object.
-
-        `auto_filter` attribute stores/returns string until 1.8. You should change your code like ``ws.auto_filter.ref = "A1:A3"``.
-
-        .. versionchanged:: 1.9
-        """
-        return self._auto_filter
 
     @property
     def freeze_panes(self):
@@ -612,8 +604,7 @@ class Worksheet(object):
             object defines the type of data-validation to be applied and the
             cell or range of cells it should apply to.
         """
-        data_validation._sheet = self
-        self._data_validations.append(data_validation)
+        self.data_validations.append(data_validation)
 
     def add_chart(self, chart, anchor=None):
         """

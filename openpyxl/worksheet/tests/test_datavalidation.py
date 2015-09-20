@@ -3,7 +3,6 @@ from __future__ import absolute_import
 
 import pytest
 
-from openpyxl.workbook import Workbook
 from openpyxl.xml.functions import fromstring, tostring
 from openpyxl.tests.helper import compare_xml
 
@@ -46,27 +45,14 @@ def test_list_validation(DataValidation):
     assert dv_dict['showInputMessage'] == '1'
 
 
-def test_error_message(DataValidation):
-    dv = DataValidation("list", formula1='"Dog,Cat,Fish"')
-    dv.set_error_message('You done bad')
-    dv_dict = dict(dv)
-    assert dv_dict['errorTitle'] == 'Validation Error'
-    assert dv_dict['error'] == 'You done bad'
-
-
-def test_prompt_message(DataValidation):
-    dv = DataValidation(type="list", formula1='"Dog,Cat,Fish"')
-    dv.set_prompt_message('Please enter a value')
-    dv_dict = dict(dv)
-    assert dv_dict['promptTitle'] == 'Validation Prompt'
-    assert dv_dict['prompt'] == 'Please enter a value'
-
-
 def test_writer_validation(DataValidation):
-    wb = Workbook()
-    ws = wb.active
+
+    class DummyCell:
+
+        coordinate = "A1"
+
     dv = DataValidation(type="list", formula1='"Dog,Cat,Fish"')
-    dv.add_cell(ws['A1'])
+    dv.add(DummyCell())
 
     xml = tostring(dv.to_tree())
     expected = """
