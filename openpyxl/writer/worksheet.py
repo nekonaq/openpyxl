@@ -70,32 +70,6 @@ def write_cols(worksheet):
         return el
 
 
-def write_autofilter(worksheet):
-    auto_filter = worksheet.auto_filter
-    if auto_filter.ref is None:
-        return
-
-    el = Element('autoFilter', ref=auto_filter.ref)
-    if (auto_filter.filter_columns
-        or auto_filter.sort_conditions):
-        for col_id, filter_column in sorted(auto_filter.filter_columns.items()):
-            fc = SubElement(el, 'filterColumn', colId=str(col_id))
-            attrs = {}
-            if filter_column.blank:
-                attrs = {'blank': '1'}
-            flt = SubElement(fc, 'filters', attrs)
-            for val in filter_column.vals:
-                flt.append(Element('filter', val=val))
-        if auto_filter.sort_conditions:
-            srt = SubElement(el, 'sortState', ref=auto_filter.ref)
-            for sort_condition in auto_filter.sort_conditions:
-                sort_attr = {'ref': sort_condition.ref}
-                if sort_condition.descending:
-                    sort_attr['descending'] = '1'
-                srt.append(Element('sortCondtion', sort_attr))
-    return el
-
-
 def write_mergecells(worksheet):
     """Write merged cells to xml."""
     cells = worksheet._merged_cells
@@ -122,21 +96,6 @@ def write_conditional_formatting(worksheet):
             cf.append(rule.to_tree())
 
         yield cf
-
-
-def write_datavalidation(worksheet):
-    """ Write data validation(s) to xml."""
-    # Filter out "empty" data-validation objects (i.e. with 0 cells)
-    required_dvs = [x for x in worksheet._data_validations
-                    if len(x.cells) or len(x.ranges)]
-    if not required_dvs:
-        return
-
-    dvs = Element("dataValidations", count=str(len(required_dvs)))
-    for dv in required_dvs:
-        dvs.append(dv.to_tree())
-
-    return dvs
 
 
 def write_header_footer(worksheet):
@@ -211,9 +170,11 @@ def write_worksheet(worksheet, shared_strings):
             if worksheet.protection.sheet:
                 xf.write(worksheet.protection.to_tree())
 
-            af = write_autofilter(worksheet)
-            if af is not None:
-                xf.write(af)
+            if worksheet.auto_filter:
+                xf.write(worksheet.auto_filter.to_tree())
+
+            if worksheet.sort_state:
+                xf.write(worksheet.sort_state.to_tree())
 
             merge = write_mergecells(worksheet)
             if merge is not None:
@@ -223,9 +184,8 @@ def write_worksheet(worksheet, shared_strings):
             for cf in cfs:
                 xf.write(cf)
 
-            dv = write_datavalidation(worksheet)
-            if dv is not None:
-                xf.write(dv)
+            if worksheet.data_validations:
+                xf.write(worksheet.data_validations.to_tree())
 
             hyper = write_hyperlinks(worksheet)
             if hyper is not None:
