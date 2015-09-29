@@ -369,8 +369,7 @@ def test_data_validation(WorkSheetParser, datadir):
 
     element = sheet.find("{%s}dataValidations" % SHEET_MAIN_NS)
     parser.parse_data_validation(element)
-    dvs = ws._data_validations
-    assert len(dvs) == 1
+    assert ws.data_validations.count == 1
 
 
 def test_read_autofilter(datadir):
@@ -378,6 +377,20 @@ def test_read_autofilter(datadir):
     wb = load_workbook("bug275.xlsx")
     ws = wb.active
     assert ws.auto_filter.ref == 'A1:B6'
+
+
+def test_sort_state(WorkSheetParser, datadir):
+    datadir.chdir()
+
+    with open("sort_worksheet.xml") as src:
+        xml = fromstring(src.read())
+    element = xml.find("{%s}sortState" % SHEET_MAIN_NS)
+
+    parser = WorkSheetParser
+    parser.parse_sort(element)
+    sort = parser.ws.sort_state
+    assert sort.ref == "B1:B3"
+    assert len(sort.sortCondition) == 1
 
 
 def test_header_footer(WorkSheetParser, datadir):
