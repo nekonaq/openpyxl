@@ -18,7 +18,8 @@ from openpyxl.styles.named_styles import NamedStyle
 
 from openpyxl.chartsheet import Chartsheet
 from . names.named_range import NamedRange
-from . properties import DocumentProperties, DocumentSecurity
+from openpyxl.packaging.core import DocumentProperties
+from .protection import DocumentSecurity
 
 
 class Workbook(object):
