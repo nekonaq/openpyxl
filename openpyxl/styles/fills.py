@@ -1,8 +1,16 @@
 from __future__ import absolute_import
 # Copyright (c) 2010-2015 openpyxl
 
-from openpyxl.descriptors import Float, Set, Alias, NoneSet
+from openpyxl.descriptors import (
+    Float,
+    Set,
+    Alias,
+    NoneSet,
+    Sequence,
+    Integer,
+)
 from openpyxl.descriptors.nested import NestedSequence
+from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.compat import safe_string
 
 from .colors import ColorDescriptor, Color
@@ -100,7 +108,7 @@ class PatternFill(Fill):
         return cls(**attrib)
 
 
-    def to_tree(self, tagname=None):
+    def to_tree(self, tagname=None, idx=None):
         parent = Element("fill")
         el = Element(self.tagname)
         if self.patternType is not None:
@@ -167,8 +175,31 @@ class GradientFill(Fill):
             colors.append(Color.from_tree(color))
         return cls(stop=colors, **node.attrib)
 
-    def to_tree(self, tagname=None, namespace=None):
+    def to_tree(self, tagname=None, namespace=None, idx=None):
         parent = Element("fill")
         el = super(GradientFill, self).to_tree()
         parent.append(el)
         return parent
+
+
+class FillList(Serialisable):
+
+    count = Integer(allow_none=True)
+    fill = Sequence(expected_type=Fill)
+
+    __attrs__ = ("count",)
+
+    def __init__(self,
+                 count=None,
+                 fill=()
+                 ):
+        self.fill = fill
+
+
+    @property
+    def count(self):
+        return len(self.fill)
+
+
+    def __getitem__(self, idx):
+        return self.fill[idx]

@@ -2,7 +2,15 @@ from __future__ import absolute_import
 # Copyright (c) 2010-2015 openpyxl
 
 from openpyxl.compat import safe_string
-from openpyxl.descriptors import NoneSet, Typed, Bool, Alias
+from openpyxl.descriptors import (
+    NoneSet,
+    Typed,
+    Bool,
+    Alias,
+    Sequence,
+    Integer,
+)
+from openpyxl.descriptors.serialisable import Serialisable
 
 from .colors import ColorDescriptor
 from .hashable import HashableObject
@@ -105,3 +113,26 @@ class Border(HashableObject):
                 yield attr, value
 
 DEFAULT_BORDER = Border()
+
+
+class BorderList(Serialisable):
+
+    count = Integer(allow_none=True)
+    border = Sequence(expected_type=Border)
+
+    __attrs__ = ("count",)
+
+    def __init__(self,
+                 count=None,
+                 border=(),
+                 ):
+        self.border = border
+
+
+    @property
+    def count(self):
+        return len(self.border)
+
+
+    def __getitem__(self, idx):
+        return self.border[idx]
