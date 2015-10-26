@@ -1,3 +1,15 @@
+2.4.0 (unreleased)
+==================
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from DataValidation
+* Convert AutoFilter to Serialisable and extend support for filters
+* Add support for SortState
+
+
 2.3.1 (unreleased)
 ==================
 
@@ -7,7 +19,6 @@ Bug fixes
 
 * `#534 <https://bitbucket.org/openpyxl/openpyxl/issues/534>`_ Exception when using columns property in read-only mode.
 * `#536 <https://bitbucket.org/openpyxl/openpyxl/issues/536>`_ Incorrectly handle comments from Google Docs files.
-
 
 2.3.0 (2015-10-20)
 ==================
