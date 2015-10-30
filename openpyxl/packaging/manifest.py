@@ -184,7 +184,7 @@ def write_content_types(workbook, as_template=False, exts=None):
                 if name not in seen:
                     manifest.Override.append(Override(name, CHART_TYPE))
 
-        if sheet._comment_count > 0:
+        if sheet._comments:
             comments_id += 1
             vml = FileExtension("vml", mimetypes.types_map[".vml"])
             if vml not in manifest.Default:

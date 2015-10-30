@@ -26,7 +26,6 @@ from openpyxl.xml.constants import (
     ARC_SHARED_STRINGS,
     ARC_CORE,
     ARC_WORKBOOK,
-    ARC_STYLE,
     ARC_THEME,
     SHARED_STRINGS,
     EXTERNAL_LINK,
@@ -38,7 +37,7 @@ from openpyxl.workbook import Workbook
 from openpyxl.workbook.names.external import detect_external_links
 from openpyxl.workbook.names.named_range import read_named_ranges
 from .strings import read_string_table
-from .style import read_style_table
+from openpyxl.styles.stylesheet import apply_stylesheet
 from .workbook import (
     read_content_types,
     read_excel_base_date,
@@ -47,8 +46,9 @@ from .workbook import (
     read_workbook_code_name,
     read_workbook_settings,
 )
-from openpyxl.workbook.properties import read_properties, DocumentProperties
+from openpyxl.packaging.core import DocumentProperties
 from openpyxl.worksheet.read_only import ReadOnlyWorksheet
+from openpyxl.xml.functions import fromstring
 from .worksheet import WorkSheetParser
 from openpyxl.comments.reader import read_comments, get_comments_file
 # Use exc_info for Python 2 compatibility with "except Exception[,/ as] e"
@@ -176,7 +176,8 @@ def load_workbook(filename, read_only=False, use_iterators=False, keep_vba=KEEP_
 
     # get workbook-level information
     try:
-        wb.properties = read_properties(archive.read(ARC_CORE))
+        src = fromstring(archive.read(ARC_CORE))
+        wb.properties = DocumentProperties.from_tree(src)
     except KeyError:
         wb.properties = DocumentProperties()
     wb.active = read_workbook_settings(archive.read(ARC_WORKBOOK)) or 0
@@ -197,21 +198,9 @@ def load_workbook(filename, read_only=False, use_iterators=False, keep_vba=KEEP_
     try:
         wb.loaded_theme = archive.read(ARC_THEME)  # some writers don't output a theme, live with it (fixes #160)
     except KeyError:
-        assert wb.loaded_theme == None, "even though the theme information is missing there is a theme object ?"
+        pass
 
-    parsed_styles = read_style_table(archive)
-    if parsed_styles is not None:
-        wb._differential_styles = parsed_styles.differential_styles
-        wb._cell_styles = parsed_styles.cell_styles
-        wb._named_styles = parsed_styles.named_styles
-        wb._colors = parsed_styles.color_index
-        wb._borders = parsed_styles.border_list
-        wb._fonts = parsed_styles.font_list
-        wb._fills = parsed_styles.fill_list
-        wb._number_formats = parsed_styles.number_formats
-        wb._protections = parsed_styles.protections
-        wb._alignments = parsed_styles.alignments
-        wb._colors = parsed_styles.color_index
+    apply_stylesheet(archive, wb) # bind styles to workbook
 
     wb.excel_base_date = read_excel_base_date(archive)
 
