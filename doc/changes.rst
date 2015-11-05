@@ -1,3 +1,23 @@
+2.4.0 (unreleased)
+==================
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from DataValidation
+* Convert AutoFilter to Serialisable and extend support for filters
+* Add support for SortState
+
+
+Deprecations
+------------
+
+Cell anchor method
+Worksheet point_pos method
+Comment text attribute
+
+
 2.3.1 (unreleased)
 ==================
 
