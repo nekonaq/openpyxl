@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from operator import itemgetter
 
 from openpyxl.compat import safe_string
+from openpyxl.comments.properties import Comment
 from openpyxl.xml.functions import xmlfile, Element, SubElement
 
 
@@ -40,7 +41,11 @@ def write_rows(xf, worksheet):
 
             with xf.element("row", attrs):
                 for col, cell in sorted(row, key=itemgetter(0)):
-                    if cell.value is None and not cell.has_style:
+                    if (
+                        cell.value is None
+                        and not cell.has_style
+                        and not cell._comment
+                        ):
                         continue
                     el = write_cell(worksheet, cell, cell.has_style)
                     xf.write(el)
@@ -56,6 +61,10 @@ def write_cell(worksheet, cell, styled=None):
         attributes['t'] = cell.data_type
 
     value = cell._value
+
+    if cell._comment is not None:
+        comment = Comment._adapted(cell.comment, cell.coordinate)
+        worksheet._comments.append(comment)
 
     el = Element("c", attributes)
     if value is None or value == "":
