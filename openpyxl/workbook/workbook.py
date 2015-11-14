@@ -13,32 +13,31 @@ from openpyxl.utils.exceptions import ReadOnlyWorkbookException
 from openpyxl.writer.write_only import WriteOnlyWorksheet, save_dump
 from openpyxl.writer.excel import save_workbook
 
-from openpyxl.styles.styleable import StyleArray
+from openpyxl.styles.cell_style import StyleArray
 from openpyxl.styles.named_styles import NamedStyle
 
 from openpyxl.chartsheet import Chartsheet
 from . names.named_range import NamedRange
-from . properties import DocumentProperties, DocumentSecurity
+from openpyxl.packaging.core import DocumentProperties
+from .protection import DocumentSecurity
 
 
 class Workbook(object):
     """Workbook is the container for all other parts of the document."""
 
+    _read_only = False
+    _data_only = False
+
     def __init__(self,
-                 optimized_write=False,
-                 encoding='utf-8',
-                 guess_types=False,
-                 data_only=False,
-                 read_only=False,
-                 write_only=False):
+                 write_only=False,
+                 ):
         self._sheets = []
         self._active_sheet_index = 0
         self._named_ranges = []
         self._external_links = []
         self.properties = DocumentProperties()
         self.security = DocumentSecurity()
-        self.__write_only = write_only or optimized_write
-        self.__read_only = read_only
+        self.__write_only = write_only
         self.shared_strings = IndexedList()
 
         self._setup_styles()
@@ -47,14 +46,12 @@ class Workbook(object):
         self.vba_archive = None
         self.is_template = False
         self._differential_styles = []
-        self._guess_types = guess_types
-        self.data_only = data_only
         self._drawings = []
         self._charts = []
         self._images = []
         self.code_name = None
         self.excel_base_date = CALENDAR_WINDOWS_1900
-        self.encoding = encoding
+        self.encoding = "utf-8"
 
         if not self.write_only:
             self._sheets.append(Worksheet(self))
@@ -92,7 +89,11 @@ class Workbook(object):
 
     @property
     def read_only(self):
-        return self.__read_only
+        return self._read_only
+
+    @property
+    def data_only(self):
+        return self._data_only
 
     @property
     def write_only(self):
