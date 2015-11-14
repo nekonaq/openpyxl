@@ -135,7 +135,7 @@ class Cell(StyleableObject):
 
     @property
     def guess_types(self):
-        return getattr(self.parent.parent, '_guess_types', False)
+        return getattr(self.parent.parent, 'guess_types', False)
 
     def __repr__(self):
         return unicode("<Cell %s.%s>") % (self.parent.title, self.coordinate)
@@ -172,11 +172,6 @@ class Cell(StyleableObject):
         self.data_type = data_type
 
 
-    @deprecated("Method is private")
-    def bind_value(self, value):
-        self._bind_value(value)
-
-
     def _bind_value(self, value):
         """Given a value, infer the correct data type"""
 
@@ -209,11 +204,6 @@ class Cell(StyleableObject):
             raise ValueError("Cannot convert {0} to Excel".format(value))
 
         self._value = value
-
-
-    @deprecated("Method is private")
-    def infer_value(self, value):
-        return self._infer_value(value)
 
 
     def _infer_value(self, value):
@@ -351,6 +341,7 @@ class Cell(StyleableObject):
         return self.parent.cell(column=offset_column, row=offset_row)
 
     @property
+    @deprecated("Use anchor objects for positioning")
     def anchor(self):
         """ returns the expected position of a cell in pixels from the top-left
             of the sheet. For example, A1 anchor should be (0,0).
@@ -395,12 +386,6 @@ class Cell(StyleableObject):
 
     @comment.setter
     def comment(self, value):
-
-        # Ensure the number of comments for the parent worksheet is up-to-date
-        if value is None and self._comment is not None:
-            self.parent._comment_count -= 1
-        if value is not None and self._comment is None:
-            self.parent._comment_count += 1
 
         if value is not None:
             value.parent = self
