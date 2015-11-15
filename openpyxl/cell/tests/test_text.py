@@ -81,10 +81,22 @@ class TestText:
         assert diff is None, diff
 
 
-    def test_from_xml(self, Text):
-        src = """
-        <text />
-        """
+    @pytest.mark.parametrize("src, expected",
+                             [
+                                 ("""<is><t>ID</t></is>""", "ID"),
+                                 ("""
+                                 <is>
+                                   <r>
+                                     <rPr />
+                                     <t xml:space="preserve">11 de September de 2014</t>
+                                   </r>
+                                 </is>
+                                 """,
+                                  "11 de September de 2014"
+                                  ),
+                             ]
+                             )
+    def test_from_xml(self, Text, src, expected):
         node = fromstring(src)
         text = Text.from_tree(node)
-        assert text == Text()
+        assert text.content == expected

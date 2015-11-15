@@ -181,6 +181,19 @@ def test_write_cell(worksheet, value, expected):
     assert diff is None, diff
 
 
+def test_write_comment(worksheet):
+
+    from ..etree_worksheet import write_cell
+    from openpyxl.comments import Comment
+
+    ws = worksheet
+    cell = ws['A1']
+    cell.comment = Comment("test comment", "test author")
+
+    el = write_cell(ws, cell, False)
+    assert len(ws._comments) == 1
+
+
 def test_write_formula(worksheet, write_rows):
     ws = worksheet
 
@@ -270,87 +283,6 @@ def test_get_rows_to_write(worksheet):
         (2, []),
         (10, [(1, ws['A10'])])
     ]
-
-@pytest.fixture
-def write_autofilter():
-    from .. worksheet import write_autofilter
-    return write_autofilter
-
-
-def test_auto_filter(worksheet, write_autofilter):
-    ws = worksheet
-    ws.auto_filter.ref = 'A1:F1'
-    af = write_autofilter(ws)
-    xml = tostring(af)
-    expected = """<autoFilter ref="A1:F1"></autoFilter>"""
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
-def test_auto_filter_filter_column(worksheet, write_autofilter):
-    ws = worksheet
-    ws.auto_filter.ref = 'A1:F1'
-    ws.auto_filter.add_filter_column(0, ["0"], blank=True)
-
-    af = write_autofilter(ws)
-    xml = tostring(af)
-    expected = """
-    <autoFilter ref="A1:F1">
-      <filterColumn colId="0">
-        <filters blank="1">
-          <filter val="0"></filter>
-        </filters>
-      </filterColumn>
-    </autoFilter>
-    """
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
-def test_auto_filter_sort_condition(worksheet, write_autofilter):
-    ws = worksheet
-    ws.cell('A1').value = 'header'
-    ws.cell('A2').value = 1
-    ws.cell('A3').value = 0
-    ws.auto_filter.ref = 'A2:A3'
-    ws.auto_filter.add_sort_condition('A2:A3', descending=True)
-
-    af = write_autofilter(ws)
-    xml = tostring(af)
-    expected = """
-    <autoFilter ref="A2:A3">
-    <sortState ref="A2:A3">
-      <sortCondtion descending="1" ref="A2:A3"></sortCondtion>
-    </sortState>
-    </autoFilter>
-    """
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
-def test_auto_filter_worksheet(worksheet, write_worksheet):
-    worksheet.auto_filter.ref = 'A1:F1'
-    xml = write_worksheet(worksheet, None)
-    expected = """
-    <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-      <sheetPr>
-        <outlinePr summaryBelow="1" summaryRight="1"/>
-        <pageSetUpPr/>
-      </sheetPr>
-      <dimension ref="A1:A1"/>
-      <sheetViews>
-        <sheetView workbookViewId="0">
-          <selection activeCell="A1" sqref="A1"/>
-        </sheetView>
-      </sheetViews>
-      <sheetFormatPr baseColWidth="10" defaultRowHeight="15"/>
-      <sheetData/>
-      <autoFilter ref="A1:F1"/>
-      <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/>
-    </worksheet>
-    """
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
 
 
 def test_merge(worksheet):
@@ -631,39 +563,13 @@ def test_vba_rels(datadir, write_worksheet):
     fname = 'vba+comments.xlsm'
     wb = load_workbook(fname, keep_vba=True)
     ws = wb['Form Controls']
+    ws._comments = True
     xml = tostring(write_rels(ws, comments_id=1, vba_controls_id=1))
     expected = """
     <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
         <Relationship Id="vbaControlId" Target="/xl/drawings/vmlDrawing1.vml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing"/>
         <Relationship Id="comments" Target="/xl/comments1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments"/>
     </Relationships>
-    """
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
-def test_write_comments(worksheet, write_worksheet):
-    ws = worksheet
-    worksheet._comment_count = 1
-    xml = write_worksheet(ws, None)
-    expected = """
-    <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-    xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-      <sheetPr>
-        <outlinePr summaryBelow="1" summaryRight="1"/>
-        <pageSetUpPr/>
-      </sheetPr>
-      <dimension ref="A1:A1"/>
-      <sheetViews>
-        <sheetView workbookViewId="0">
-          <selection activeCell="A1" sqref="A1"/>
-        </sheetView>
-      </sheetViews>
-      <sheetFormatPr baseColWidth="10" defaultRowHeight="15"/>
-      <sheetData/>
-      <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/>
-      <legacyDrawing r:id="commentsvml"></legacyDrawing>
-    </worksheet>
     """
     diff = compare_xml(xml, expected)
     assert diff is None, diff
