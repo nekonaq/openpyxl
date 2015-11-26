@@ -1,6 +1,8 @@
 from __future__ import absolute_import
 # Copyright (c) 2010-2015 openpyxl
 
+from openpyxl.compat import deprecated
+
 
 class Comment(object):
 
@@ -24,13 +26,14 @@ class Comment(object):
 
 
     @property
+    @deprecated("Use the content attribute")
     def text(self):
         """
         Any comment text stripped of all formatting.
         """
         return self.content
 
-
     @text.setter
+    @deprecated("Use the content attribute")
     def text(self, value):
         self.content = value
