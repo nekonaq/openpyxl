@@ -122,13 +122,6 @@ class TestWorksheet:
             assert tuple(c.coordinate for c in row) == coord
 
 
-    def test_worksheet(self, Worksheet, recwarn):
-        ws = Worksheet(Workbook())
-        rows = ws.range("A1:D4")
-        w = recwarn.pop()
-        assert issubclass(w.category, UserWarning)
-
-
     def test_get_named_range(self, Worksheet):
         wb = Workbook()
         ws = Worksheet(wb)
@@ -336,11 +329,6 @@ class TestWorksheet:
 
     def test_auto_filter(self, Worksheet):
         ws = Worksheet(Workbook())
-        ws.auto_filter.ref = ws.iter_rows('a1:f1')
-        assert ws.auto_filter.ref == 'A1:F1'
-
-        ws.auto_filter.ref = ''
-        assert ws.auto_filter.ref is None
 
         ws.auto_filter.ref = 'c1:g9'
         assert ws.auto_filter.ref == 'C1:G9'
