@@ -141,18 +141,17 @@ def write_content_types(workbook, as_template=False, exts=None):
 
     manifest = Manifest()
 
+    if workbook.vba_archive:
+        node = fromstring(workbook.vba_archive.read(ARC_CONTENT_TYPES))
+        manifest = Manifest.from_tree(node)
+        del node
+
     if exts is not None:
         for ext in exts:
             ext = os.path.splitext(ext)[-1]
             mime = mimetypes.types_map[ext]
             fe = FileExtension(ext[1:], mime)
-            if fe not in manifest.Default:
-                manifest.Default.append(fe)
-
-    if workbook.vba_archive:
-        node = fromstring(workbook.vba_archive.read(ARC_CONTENT_TYPES))
-        manifest = Manifest.from_tree(node)
-        del node
+            manifest.Default.append(fe)
 
     # templates
     for part in manifest.Override:
@@ -184,7 +183,7 @@ def write_content_types(workbook, as_template=False, exts=None):
                 name = '/xl/charts/chart%d.xml' % chart_id
                 manifest.Override.append(Override(name, CHART_TYPE))
 
-        if sheet._comment_count > 0:
+        if sheet._comments:
             comments_id += 1
             vml = FileExtension("vml", mimetypes.types_map[".vml"])
             if vml not in manifest.Default:
