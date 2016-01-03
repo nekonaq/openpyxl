@@ -52,8 +52,8 @@ def test_add_sheet_from_other_workbook():
 
 
 def test_create_sheet_readonly():
-    wb = Workbook(read_only=True)
-    #wb._set_optimized_read()
+    wb = Workbook()
+    wb._read_only = True
     with pytest.raises(ReadOnlyWorkbookException):
         wb.create_sheet()
 
@@ -178,7 +178,7 @@ def test_write_regular_date(tmpdir):
 def test_write_regular_float(tmpdir):
     float_value = 1.0 / 3.0
     book = Workbook()
-    sheet = book.get_active_sheet()
+    sheet = book.active
     sheet.cell("A1").value = float_value
     dest_filename = 'float_read_write_issue.xlsx'
     book.save(dest_filename)
