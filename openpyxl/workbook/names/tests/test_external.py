@@ -18,12 +18,8 @@ from openpyxl.xml.functions import tostring
 
 def test_read_external_ref(datadir):
     datadir.chdir()
-    archive = ZipFile(BytesIO(), "w")
-    with open("[Content_Types].xml") as src:
-        archive.writestr(ARC_CONTENT_TYPES, src.read())
     with open("workbook.xml.rels") as src:
-        archive.writestr(ARC_WORKBOOK_RELS, src.read())
-    rels = read_rels(archive)
+        rels = read_rels(src.read())
     for _, pth in rels:
         if pth['type'] == '%s/externalLink' % REL_NS:
             assert pth['path'] == 'xl/externalLinks/externalLink1.xml'
@@ -43,7 +39,7 @@ def test_read_external_ranges(datadir):
     datadir.chdir()
     with open("externalLink1.xml") as src:
         xml = src.read()
-    names = tuple(parse_ranges(xml))
+    names = parse_ranges(xml)
     assert names[0].name == 'B2range'
     assert names[0].refersTo == "='Sheet1'!$A$1:$A$10"
 
@@ -52,28 +48,20 @@ def test_read_ole_link(datadir):
     from ..external import parse_ranges
     with open("OLELink.xml") as src:
         xml = src.read()
-    assert tuple(parse_ranges(xml)) == ()
-
-
-def test_dict_external_book():
-    from .. external import ExternalBook
-    book = ExternalBook('rId1', "book1.xlsx")
-    assert dict(book) == {'Id':'rId1', 'Target':'book1.xlsx',
-                          'TargetMode':'External',
-                          'Type':'http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath'}
+    assert parse_ranges(xml) is None
 
 
 def test_dict_external_range():
-    from .. external import ExternalRange
-    rng = ExternalRange("something_special", "='Sheet1'!$A$1:$B$2")
+    from .. external import ExternalDefinedName
+    rng = ExternalDefinedName("something_special", "='Sheet1'!$A$1:$B$2")
     assert dict(rng) == {'name':'something_special', 'refersTo':"='Sheet1'!$A$1:$B$2"}
 
 
 def test_write_external_link():
-    from .. external import ExternalRange
+    from .. external import ExternalDefinedName
     from .. external import write_external_link
-    link1 = ExternalRange('r1', 'over_there!$A$1:$B$2')
-    link2 = ExternalRange('r2', 'somewhere_else!$C$10:$D$12')
+    link1 = ExternalDefinedName('r1', 'over_there!$A$1:$B$2')
+    link2 = ExternalDefinedName('r2', 'somewhere_else!$C$10:$D$12')
     links = [link1, link2]
     el = write_external_link(links)
     xml = tostring(el)
@@ -91,28 +79,12 @@ def test_write_external_link():
     assert diff is None, diff
 
 
-def test_write_external_book_rel():
-    from .. external import ExternalBook
-    from .. external import write_external_book_rel
-    book = ExternalBook("rId1", "book2.xlsx")
-    rel = write_external_book_rel(book)
-    xml = tostring(rel)
-    expected = """
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="book2.xlsx" TargetMode="External"/>
-</Relationships>
-
-"""
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
 def test_read_archive(datadir):
     from openpyxl.reader.workbook import read_rels
     from .. external import detect_external_links
     datadir.chdir()
     archive = ZipFile("book1.xlsx")
-    rels = read_rels(archive)
+    rels = read_rels(archive.read(ARC_WORKBOOK_RELS))
     books = detect_external_links(rels, archive)
     book = tuple(books)[0]
     assert book.Target == "book2.xlsx"

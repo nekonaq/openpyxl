@@ -110,6 +110,7 @@ class Comment(Serialisable):
     author = String(allow_none=True)
 
     __elements__ = ('text', 'commentPr')
+    __attrs__ = ('ref', 'authorId', 'guid', 'shapeId')
 
     def __init__(self,
                  ref="",
@@ -129,6 +130,16 @@ class Comment(Serialisable):
         self.text = text
         self.commentPr = commentPr
         self.author = author
+
+
+    @classmethod
+    def _adapted(cls, comment, ref=None):
+        """
+        Class method to convert from old style comments
+        """
+        self = cls(ref=ref, author=comment.author)
+        self.text.t = comment.content
+        return self
 
 
     @property

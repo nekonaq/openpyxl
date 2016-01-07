@@ -26,7 +26,7 @@ from openpyxl.xml.constants import (
     ARC_SHARED_STRINGS,
     ARC_CORE,
     ARC_WORKBOOK,
-    ARC_STYLE,
+    ARC_WORKBOOK_RELS,
     ARC_THEME,
     SHARED_STRINGS,
     EXTERNAL_LINK,
@@ -39,17 +39,15 @@ from openpyxl.workbook.names.external import detect_external_links
 from openpyxl.workbook.names.named_range import read_named_ranges
 from openpyxl.packaging.relationship import get_dependents
 from .strings import read_string_table
-from .style import read_style_table
+from openpyxl.styles.stylesheet import apply_stylesheet
 from .workbook import (
     read_content_types,
-    read_excel_base_date,
-    detect_worksheets,
     read_rels,
-    read_workbook_code_name,
-    read_workbook_settings,
 )
-from openpyxl.workbook.properties import read_properties, DocumentProperties
+from openpyxl.packaging.core import DocumentProperties
+from openpyxl.packaging.workbook import WorkbookParser
 from openpyxl.worksheet.read_only import ReadOnlyWorksheet
+from openpyxl.xml.functions import fromstring
 from .worksheet import WorkSheetParser
 from openpyxl.comments.reader import read_comments, get_comments_file
 # Use exc_info for Python 2 compatibility with "except Exception[,/ as] e"
@@ -119,7 +117,7 @@ def _validate_archive(filename):
     return archive
 
 
-def load_workbook(filename, read_only=False, use_iterators=False, keep_vba=KEEP_VBA, guess_types=False, data_only=False):
+def load_workbook(filename, read_only=False, keep_vba=KEEP_VBA, data_only=False, guess_types=False):
     """Open the given filename and return the workbook
 
     :param filename: the path to open or a file-like object
@@ -127,9 +125,6 @@ def load_workbook(filename, read_only=False, use_iterators=False, keep_vba=KEEP_
 
     :param read_only: optimised for reading, content cannot be edited
     :type read_only: bool
-
-    :param use_iterators: use lazy load for cells
-    :type use_iterators: bool
 
     :param keep_vba: preseve vba content (this does NOT mean you can use it)
     :type keep_vba: bool
@@ -149,9 +144,15 @@ def load_workbook(filename, read_only=False, use_iterators=False, keep_vba=KEEP_
 
     """
     archive = _validate_archive(filename)
-    read_only = read_only or use_iterators
+    read_only = read_only
 
-    wb = Workbook(guess_types=guess_types, data_only=data_only, read_only=read_only)
+    parser = WorkbookParser(archive)
+    parser.parse()
+    wb = parser.wb
+    wb._data_only = data_only
+    wb._read_only = read_only
+    wb.guess_types = guess_types
+    wb._sheets = []
 
     if read_only and guess_types:
         warnings.warn('Data types are not guessed when using iterator reader')
@@ -161,66 +162,41 @@ def load_workbook(filename, read_only=False, use_iterators=False, keep_vba=KEEP_
     # If are going to preserve the vba then attach a copy of the archive to the
     # workbook so that is available for the save.
     if keep_vba:
-        try:
-            f = open(filename, 'rb')
-            s = f.read()
-            f.close()
-        except:
-            pos = filename.tell()
-            filename.seek(0)
-            s = filename.read()
-            filename.seek(pos)
-        wb.vba_archive = ZipFile(BytesIO(s), 'r')
+        wb.vba_archive = ZipFile(BytesIO(), 'a', ZIP_DEFLATED)
+        for name in archive.namelist():
+            wb.vba_archive.writestr(name, archive.read(name))
+
 
     if read_only:
         wb._archive = ZipFile(filename)
 
     # get workbook-level information
-    try:
-        wb.properties = read_properties(archive.read(ARC_CORE))
-    except KeyError:
-        wb.properties = DocumentProperties()
-    wb.active = read_workbook_settings(archive.read(ARC_WORKBOOK)) or 0
+    if ARC_CORE in valid_files:
+        src = fromstring(archive.read(ARC_CORE))
+        wb.properties = DocumentProperties.from_tree(src)
 
     # what content types do we have?
     cts = dict(read_content_types(archive))
+    wb.is_template = XLTX in cts or XLTM in cts
 
+    shared_strings = []
     strings_path = cts.get(SHARED_STRINGS)
     if strings_path is not None:
         if strings_path.startswith("/"):
             strings_path = strings_path[1:]
         shared_strings = read_string_table(archive.read(strings_path))
-    else:
-        shared_strings = []
 
-    wb.is_template = XLTX in cts or XLTM in cts
 
-    try:
-        wb.loaded_theme = archive.read(ARC_THEME)  # some writers don't output a theme, live with it (fixes #160)
-    except KeyError:
-        assert wb.loaded_theme == None, "even though the theme information is missing there is a theme object ?"
+    if ARC_THEME in valid_files:
+        wb.loaded_theme = archive.read(ARC_THEME)
 
-    parsed_styles = read_style_table(archive)
-    if parsed_styles is not None:
-        wb._differential_styles = parsed_styles.differential_styles
-        wb._cell_styles = parsed_styles.cell_styles
-        wb._named_styles = parsed_styles.named_styles
-        wb._colors = parsed_styles.color_index
-        wb._borders = parsed_styles.border_list
-        wb._fonts = parsed_styles.font_list
-        wb._fills = parsed_styles.fill_list
-        wb._number_formats = parsed_styles.number_formats
-        wb._protections = parsed_styles.protections
-        wb._alignments = parsed_styles.alignments
-        wb._colors = parsed_styles.color_index
-
-    wb.excel_base_date = read_excel_base_date(archive)
+    apply_stylesheet(archive, wb) # bind styles to workbook
 
     # get worksheets
-    wb._sheets = []  # remove preset worksheet
-    for sheet in detect_worksheets(archive):
-        sheet_name = sheet['title']
-        worksheet_path = sheet['path']
+    for sheet, rel in parser.find_sheets():
+        sheet_name = sheet.name
+        worksheet_path = rel.target
+
         if not worksheet_path in valid_files:
             continue
 
@@ -233,7 +209,7 @@ def load_workbook(filename, read_only=False, use_iterators=False, keep_vba=KEEP_
             parser = WorkSheetParser(wb, sheet_name, fh, shared_strings)
             parser.parse()
             new_ws = wb[sheet_name]
-        new_ws.sheet_state = sheet['state']
+        new_ws.sheet_state = sheet.state
 
         if wb.vba_archive is not None and new_ws.legacy_drawing is not None:
             # We need to get the file name of the legacy drawing
@@ -251,10 +227,8 @@ def load_workbook(filename, read_only=False, use_iterators=False, keep_vba=KEEP_
     wb._differential_styles = [] # reset
     wb._named_ranges = list(read_named_ranges(archive.read(ARC_WORKBOOK), wb))
 
-    wb.code_name = read_workbook_code_name(archive.read(ARC_WORKBOOK))
-
     if EXTERNAL_LINK in cts:
-        rels = read_rels(archive)
+        rels = read_rels(archive.read(ARC_WORKBOOK_RELS))
         wb._external_links = list(detect_external_links(rels, archive))
 
 

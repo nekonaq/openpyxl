@@ -3,12 +3,23 @@ from __future__ import absolute_import
 
 import os
 
-from openpyxl.descriptors import String, Strict
-from openpyxl.packaging.relationship import Relationship
+from openpyxl.descriptors.serialisable import Serialisable
+from openpyxl.descriptors import (
+    Typed,
+    String,
+    Bool,
+    Integer,
+    NoneSet,
+    Sequence,
+)
+from openpyxl.descriptors.excel import Relation, ExtensionList
+from openpyxl.descriptors.nested import NestedText
+from openpyxl.descriptors.sequence import NestedSequence
+
+from openpyxl.packaging.relationship import Relationship, RelationshipList
 from openpyxl.xml.constants import (
     SHEET_MAIN_NS,
     REL_NS,
-    PKG_REL_NS,
     EXTERNAL_LINK_NS,
 )
 from openpyxl.xml.functions import (
@@ -22,68 +33,182 @@ from openpyxl.xml.functions import (
 """Manage links to external Workbooks"""
 
 
-class ExternalBook(Strict):
+class ExternalCell(Serialisable):
 
-    """
-    Map the relationship of one workbook to another
-    """
+    r = String()
+    t = NoneSet(values=(['b', 'd', 'n', 'e', 's', 'str', 'inlineStr']))
+    vm = Integer(allow_none=True)
+    v = NestedText(allow_none=True, expected_type=str)
 
-    Id = String()
-    Type = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath"
-    TargetMode = "External"
-    Target = String()
-
-    def __init__(self, Id, Target, TargetMode=None, Type=None):
-        self.Id = Id
-        self.Target = Target
-        links = []
-
-    def __iter__(self):
-        for attr in ('Id', 'Type', 'TargetMode', 'Target'):
-            value = getattr(self, attr)
-            yield attr, value
+    def __init__(self,
+                 r=None,
+                 t=None,
+                 vm=None,
+                 v=None,
+                ):
+        self.r = r
+        self.t = t
+        self.vm = vm
+        self.v = v
 
 
-class ExternalRange(Strict):
+class ExternalRow(Serialisable):
 
-    """
-    Map external named ranges
-    NB. the specification for these is different to named ranges within a workbook
-    See 18.14.5
-    """
+    r = Integer()
+    cell = Typed(expected_type=ExternalCell, allow_none=True)
+
+    __elements__ = ('cell',)
+
+    def __init__(self,
+                 r=None,
+                 cell=None,
+                ):
+        self.r = r
+        self.cell = cell
+
+
+class ExternalSheetData(Serialisable):
+
+    sheetId = Integer()
+    refreshError = Bool(allow_none=True)
+    row = Typed(expected_type=ExternalRow, allow_none=True)
+
+    __elements__ = ('row',)
+
+    def __init__(self,
+                 sheetId=None,
+                 refreshError=None,
+                 row=None,
+                ):
+        self.sheetId = sheetId
+        self.refreshError = refreshError
+        self.row = row
+
+
+class ExternalSheetDataSet(Serialisable):
+
+    sheetData = Typed(expected_type=ExternalSheetData, )
+
+    __elements__ = ('sheetData',)
+
+    def __init__(self,
+                 sheetData=None,
+                ):
+        self.sheetData = sheetData
+
+
+class ExternalDefinedName(Serialisable):
 
     name = String()
     refersTo = String(allow_none=True)
-    sheetId = String(allow_none=True)
+    sheetId = Integer(allow_none=True)
 
-    def __init__(self, name, refersTo=None, sheetId=None):
+    def __init__(self,
+                 name=None,
+                 refersTo=None,
+                 sheetId=None,
+                ):
         self.name = name
         self.refersTo = refersTo
         self.sheetId = sheetId
 
 
-    def __iter__(self):
-        for attr in ('name', 'refersTo', 'sheetId'):
-            value = getattr(self, attr, None)
-            if value is not None:
-                yield attr, value
+class ExternalDefinedNames(Serialisable):
+
+    definedName = Sequence(expected_type=ExternalDefinedName, allow_none=True)
+
+    __elements__ = ('definedName',)
+
+    def __init__(self,
+                 definedName=(),
+                ):
+        self.definedName = definedName
+
+
+class ExternalSheetName(Serialisable):
+
+    val = String()
+
+    def __init__(self,
+                 val=None,
+                ):
+        self.val = val
+
+
+class ExternalSheetNames(Serialisable):
+
+    sheetName = Typed(expected_type=ExternalSheetName, )
+
+    __elements__ = ('sheetName',)
+
+    def __init__(self,
+                 sheetName=None,
+                ):
+        self.sheetName = sheetName
+
+
+class ExternalBook(Serialisable):
+
+    sheetNames = Typed(expected_type=ExternalSheetNames, allow_none=True)
+    definedNames = Typed(expected_type=ExternalDefinedNames, allow_none=True)
+    sheetDataSet = Typed(expected_type=ExternalSheetDataSet, allow_none=True)
+    id = Relation()
+
+    __elements__ = ('sheetNames', 'definedNames', 'sheetDataSet')
+
+    def __init__(self,
+                 sheetNames=None,
+                 definedNames=None,
+                 sheetDataSet=None,
+                 id=None,
+                ):
+        self.sheetNames = sheetNames
+        self.definedNames = definedNames
+        self.sheetDataSet = sheetDataSet
+        self.id = id
+
+
+class ExternalLink(Serialisable):
+
+    tagname = "externalLink"
+
+    externalBook = Typed(expected_type=ExternalBook, allow_none=True)
+
+    __elements__ = ('externalBook', )
+
+    def __init__(self,
+                 externalBook=None,
+                 ddeLink=None,
+                 oleLink=None,
+                 extLst=None,
+                ):
+        self.externalBook = externalBook
+        # ignore other items for the moment.
+
+
+    def to_tree(self):
+        node = super(ExternalLink, self).to_tree()
+        node.set("xmlns", SHEET_MAIN_NS)
+        return node
 
 
 def parse_books(xml):
     tree = fromstring(xml)
-    rels = tree.findall('{%s}Relationship' % PKG_REL_NS)
-    for r in rels:
-        return ExternalBook(**r.attrib)
+
+    rels = RelationshipList.from_tree(tree)
+    for r in rels.Relationship:
+        return r
 
 
 def parse_ranges(xml):
     tree = fromstring(xml)
-    book = tree.find('{%s}externalBook' % SHEET_MAIN_NS)
+    tree = ExternalLink.from_tree(tree)
+
+    book = tree.externalBook
     if book is None:
         return
-    names = book.find('{%s}definedNames' % SHEET_MAIN_NS)
-    for n in safe_iterator(names, '{%s}definedName' % SHEET_MAIN_NS):
-        yield ExternalRange(**n.attrib)
+
+    return book.definedNames.definedName
 
 
 def detect_external_links(rels, archive):
@@ -103,18 +228,15 @@ def detect_external_links(rels, archive):
 
 def write_external_link(links):
     """Serialise links to ranges in a single external worbook"""
-    root = Element("{%s}externalLink" % SHEET_MAIN_NS)
-    book =  SubElement(root, "{%s}externalBook" % SHEET_MAIN_NS, {'{%s}id' % REL_NS:'rId1'})
-    external_ranges = SubElement(book, "{%s}definedNames" % SHEET_MAIN_NS)
+    book = ExternalBook(id="rId1", definedNames=ExternalDefinedNames())
     for l in links:
-        external_ranges.append(Element("{%s}definedName" % SHEET_MAIN_NS, dict(l)))
-    return root
+        book.definedNames.definedName.append(l)
+    root = ExternalLink(externalBook=book)
+    return root.to_tree()
 
 
 def write_external_book_rel(book):
     """Serialise link to external file"""
-    root = Element("Relationships", xmlns=PKG_REL_NS)
-    rel = Relationship("", target=book.Target, targetMode=book.TargetMode, id="rId1")
-    rel.type = book.Type
-    root.append(rel.to_tree())
-    return root
+    root = RelationshipList()
+    root.append(book)
+    return root.to_tree()
