@@ -36,10 +36,9 @@ def test_read_comments(datadir, cell, author, text):
 def test_get_comments_file(datadir):
     datadir.chdir()
     archive = ZipFile('comments.xlsx')
-    valid_files = archive.namelist()
-    assert reader.get_comments_file('sheet1.xml', archive, valid_files) == 'xl/comments1.xml'
-    assert reader.get_comments_file('sheet3.xml', archive, valid_files) == 'xl/comments2.xml'
-    assert reader.get_comments_file('sheet2.xml', archive, valid_files) is None
+    assert reader.get_comments_file('xl/worksheets/sheet1.xml', archive) == 'xl/comments1.xml'
+    assert reader.get_comments_file('xl/worksheets/sheet3.xml', archive) == 'xl/comments2.xml'
+    assert reader.get_comments_file('xl/worksheets/sheet2.xml', archive) is None
 
 
 def test_comments_cell_association(datadir):
@@ -53,7 +52,7 @@ def test_comments_cell_association(datadir):
 
 def test_comments_with_iterators(datadir):
     datadir.chdir()
-    wb = load_workbook('comments.xlsx', use_iterators=True)
+    wb = load_workbook('comments.xlsx', read_only=True)
     ws = wb['Sheet1']
     with pytest.raises(AttributeError):
         assert ws.cell(coordinate="A1").comment.author == "Cuke"

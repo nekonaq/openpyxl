@@ -22,39 +22,32 @@ from openpyxl.xml.functions import (
 
 class Relationship(Serialisable):
     """Represents many kinds of relationships."""
-    # TODO: Use this object for workbook relationships as well as
-    # worksheet relationships
 
     tagname = "Relationship"
 
     Type = String()
-    type = Alias('Type')
     Target = String()
-    target = Alias('Target')
+    target = Alias("Target")
     TargetMode = String(allow_none=True)
-    targetMode = Alias('TargetMode')
     Id = String(allow_none=True)
-    id = Alias('Id')
 
 
     def __init__(self,
-                 type=None,
-                 target=None,
-                 targetMode=None,
-                 id=None,
                  Id=None,
                  Type=None,
+                 type=None,
                  Target=None,
+                 TargetMode=None
                  ):
+        """
+        `type` can be used as a shorthand with the default relationships namespace
+        otherwise the `Type` must be a fully qualified URL
+        """
         if type is not None:
             Type = "%s/%s" % (REL_NS, type)
         self.Type = Type
-        if target is not None:
-            Target = target
         self.Target = Target
-        self.targetMode = targetMode
-        if id is not None:
-            Id = id
+        self.TargetMode = TargetMode
         self.Id = Id
 
 
@@ -83,9 +76,14 @@ class RelationshipList(Serialisable):
         return bool(self.Relationship)
 
 
+    def __iter__(self):
+        for r in self.Relationship:
+            yield r
+
+
     def __getitem__(self, key):
         for r in self.Relationship:
-            if r.id == key:
+            if r.Id == key:
                 return r
         raise KeyError("Unknown relationship: {0}".format(key))
 
@@ -93,11 +91,23 @@ class RelationshipList(Serialisable):
     def to_tree(self):
         tree = Element("Relationships", xmlns=PKG_REL_NS)
         for idx, rel in enumerate(self.Relationship, 1):
-            if not rel.id:
-                rel.id = "rId{0}".format(idx)
+            if not rel.Id:
+                rel.Id = "rId{0}".format(idx)
             tree.append(rel.to_tree())
 
         return tree
+
+
+def get_rels_path(path):
+    """
+    Convert relative path to absolutes that can be loaded from a zip
+    archive.
+    The path to be passed in is that of containing object (workbook,
+    worksheet, etc.)
+    """
+    folder, obj = posixpath.split(path)
+    filename = posixpath.join(folder, '_rels', '{0}.rels'.format(obj))
+    return filename
 
 
 def get_dependents(archive, filename):

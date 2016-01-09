@@ -1,3 +1,30 @@
+2.4.0 (unreleased)
+==================
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from DataValidation
+* Convert AutoFilter to Serialisable and extend support for filters
+* Add support for SortState
+* Removed `use_iterators` keyword when loading workbooks. Use `read_only` instead.
+
+
+Deprecations
+------------
+
+Cell anchor method
+Worksheet point_pos method
+Comment text attribute
+
+
+Bug fixes
+---------
+
+* `#574 <https://bitbucket.org/openpyxl/openpyxl/issues/574>`_ Exception raised when using the class method to parse Relationships
+
+
 2.3.3 (unreleased)
 ==================
 
