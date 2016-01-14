@@ -9,7 +9,7 @@ from openpyxl.compat import zip
 
 # package imports
 from .. named_range import split_named_range, NamedRange, NamedValue
-from openpyxl.workbook.names.named_range import read_named_ranges
+from ..named_range import read_named_ranges
 from openpyxl.utils.exceptions import NamedRangeException
 from openpyxl.reader.excel import load_workbook
 
@@ -34,16 +34,19 @@ class DummyWB:
             return self.ws
 
 
-@pytest.mark.parametrize("range_string",
+@pytest.mark.parametrize("value, is_range",
                          [
-                             "'My Sheet'!$D$8",
-                             "Sheet1!$A$1",
-                             "[1]Sheet1!$A$1",
-                             "[1]!B2range",
-                         ])
-def test_check_range(range_string):
+                ("'My Sheet'!$D$8", True),
+                ("Sheet1!$A$1", True),
+                ("[1]Sheet1!$A$1", True),
+                ("[1]!B2range", True),
+                ("OFFSET(MODEL!$A$1,'Stock Graphs'!$D$3-1,'Stock Graphs'!$C$25+5,'Stock Graphs'!$D$6,1)/1.65", False),
+                ("B1namedrange", False),
+                         ]
+                         )
+def test_check_range(value, is_range):
     from .. named_range import refers_to_range
-    assert refers_to_range(range_string) is True
+    assert refers_to_range(value) is is_range
 
 
 @pytest.mark.parametrize("range_string, result",
@@ -156,7 +159,7 @@ def test_read_external_ranges(datadir):
         ("references_other_named_range", "B1namedrange"),
     ]
     for xlr, target in zip(named_ranges, expected):
-        assert xlr.name, xlr.value == target
+        assert (xlr.name, xlr.value) == target
 
 
 ranges_counts = (
@@ -183,29 +186,12 @@ def test_merged_cells_named_range(datadir):
     assert 10 == cell.value
 
 
-def test_print_titles(Workbook):
-    wb = Workbook()
-    ws1 = wb.create_sheet()
-    ws2 = wb.create_sheet()
-    scope1 = ws1.parent.worksheets.index(ws1)
-    scope2 = ws2.parent.worksheets.index(ws2)
-    ws1.add_print_title(2)
-    ws2.add_print_title(3, rows_or_cols='cols')
-
-    def mystr(nr):
-        return ','.join(['%s!%s' % (sheet.title, name) for sheet, name in nr.destinations])
-
-    actual_named_ranges = set([(nr.name, nr.scope, mystr(nr)) for nr in wb.get_named_ranges()])
-    expected_named_ranges = set([('_xlnm.Print_Titles', scope1, 'Sheet1!$1:$2'),
-                                 ('_xlnm.Print_Titles', scope2, 'Sheet2!$A:$C')])
-    assert(actual_named_ranges == expected_named_ranges)
-
-
-@pytest.mark.usefixtures("datadir")
 class TestNameRefersToValue:
 
-    def __init__(self, datadir):
-        datadir.join("genuine").chdir()
+
+    @pytest.fixture(autouse=True)
+    def setup(self, datadir):
+        datadir.chdir()
         self.wb = load_workbook('NameWithValueBug.xlsx')
         self.ws = self.wb["Sheet1"]
 
@@ -216,6 +202,7 @@ class TestNameRefersToValue:
                 'MyValue'] == [range.name for range in ranges]
 
 
+    @pytest.mark.xfail
     def test_workbook_has_normal_range(self):
         normal_range = self.wb.get_named_range("MyRef")
         assert normal_range.name == "MyRef"
@@ -231,14 +218,16 @@ class TestNameRefersToValue:
 
     def test_worksheet_range(self):
         range = self.ws.get_named_range("MyRef")
-        assert range.coordinate == "A1"
+        assert range[0].coordinate == "A1"
 
 
+    @pytest.mark.xfail
     def test_worksheet_range_error_on_value_range(self):
         with pytest.raises(NamedRangeException):
             self.ws.get_named_range("MyValue")
 
 
+    @pytest.mark.xfail
     def test_handles_scope(self):
         scoped = [
             ("MySheetRef", "Sheet1"), ("MySheetRef", "Sheet2"),
@@ -246,10 +235,12 @@ class TestNameRefersToValue:
         ]
         no_scoped = ["MyRef", "MyValue"]
         ranges = self.wb.get_named_ranges()
-        assert [(r.name, r.scope.title) for r in ranges if r.scope is not None] == scoped
+        assert [(r.name, self.wb._sheets[int(r.scope)].title)
+                for r in ranges if r.scope is not None] == scoped
         assert [r.name for r in ranges if r.scope is None] == no_scoped
 
 
+    @pytest.mark.xfail
     def test_can_be_saved(self, tmpdir):
         tmpdir.chdir()
         FNAME = "foo.xlsx"
@@ -261,7 +252,7 @@ class TestNameRefersToValue:
         assert [r.name for r in ranges] == names
 
         values = ['3.33', '14.4', '9.99']
-        assert [r.value for r in ranges if hasattr(r, 'value')] == values
+        assert [r.value for r in ranges if not isinstance(r, NamedRange)] == values
 
 
 @pytest.mark.parametrize("value",
@@ -281,7 +272,7 @@ def test_formula_names(value):
                          ])
 def test_formula_not_range(value):
     from .. named_range import refers_to_range
-    assert refers_to_range(value) is None
+    assert not refers_to_range(value)
 
 
 @pytest.mark.parametrize("value, result",

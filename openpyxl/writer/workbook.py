@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 """Write the workbook global settings to the archive."""
 
-# package imports
+from copy import copy
 
 from openpyxl import LXML
 from openpyxl.compat import safe_string
@@ -33,7 +33,7 @@ from openpyxl.utils.datetime  import datetime_to_W3CDTF
 from openpyxl.worksheet import Worksheet
 from openpyxl.chartsheet import Chartsheet
 from openpyxl.packaging.relationship import Relationship, RelationshipList
-from openpyxl.workbook.properties import write_properties
+from openpyxl.workbook.defined_name.definition import Definition
 
 
 def write_properties_app(workbook):
@@ -72,14 +72,13 @@ def write_root_rels(workbook):
 
     rels = RelationshipList()
 
-    rel = Relationship(type="officeDocument", target=ARC_WORKBOOK, id="rId1")
+    rel = Relationship(type="officeDocument", Target=ARC_WORKBOOK, Id="rId1")
     rels.append(rel)
 
-    rel = Relationship("", target=ARC_CORE, id='rId2',)
-    rel.type = "%s/metadata/core-properties" % PKG_REL_NS
+    rel = Relationship(Target=ARC_CORE, Id='rId2', Type="%s/metadata/core-properties" % PKG_REL_NS)
     rels.append(rel)
 
-    rel = Relationship("extended-properties", target=ARC_APP, id='rId3')
+    rel = Relationship(type="extended-properties", Target=ARC_APP, Id='rId3')
     rels.append(rel)
 
     if workbook.vba_archive is not None:
@@ -93,8 +92,7 @@ def write_root_rels(workbook):
                         rId = rel.get('Id')
                         break
         if rId is not None:
-            vba = Relationship("", target=ARC_CUSTOM_UI, id=rId)
-            vba.type = CUSTOMUI_NS
+            vba = Relationship(Target=ARC_CUSTOM_UI, Id=rId, Type=CUSTOMUI_NS)
             rels.append(vba)
 
     return tostring(rels.to_tree())
@@ -103,27 +101,25 @@ def write_root_rels(workbook):
 def write_workbook(workbook):
     """Write the core workbook xml."""
 
-    root = Element('{%s}workbook' % SHEET_MAIN_NS)
-    if LXML:
-        _nsmap = {'r':REL_NS}
-        root = Element('{%s}workbook' % SHEET_MAIN_NS, nsmap=_nsmap)
+    root = Element('workbook')
+    root.set("xmlns", SHEET_MAIN_NS)
 
     wb_props = {}
     if workbook.code_name is not None:
         wb_props['codeName'] = workbook.code_name
-    SubElement(root, '{%s}workbookPr' % SHEET_MAIN_NS, wb_props)
+    SubElement(root, 'workbookPr', wb_props)
 
     # book views
-    book_views = SubElement(root, '{%s}bookViews' % SHEET_MAIN_NS)
-    SubElement(book_views, '{%s}workbookView' % SHEET_MAIN_NS,
+    book_views = SubElement(root, 'bookViews')
+    SubElement(book_views, 'workbookView',
                {'activeTab': '%d' % workbook._active_sheet_index}
                )
 
     # worksheets
-    sheets = SubElement(root, '{%s}sheets' % SHEET_MAIN_NS)
+    sheets = SubElement(root, 'sheets')
     for i, sheet in enumerate(workbook._sheets, 1):
         sheet_node = SubElement(
-            sheets, '{%s}sheet' % SHEET_MAIN_NS,
+            sheets, 'sheet',
             {'name': sheet.title, 'sheetId': '%d' % i,
              '{%s}id' % REL_NS: 'rId%d' % i })
         if not sheet.sheet_state == 'visible':
@@ -133,47 +129,44 @@ def write_workbook(workbook):
 
     # external references
     if getattr(workbook, '_external_links', []):
-        external_references = SubElement(root, '{%s}externalReferences' % SHEET_MAIN_NS)
+        external_references = SubElement(root, 'externalReferences')
         # need to match a counter with a workbook's relations
         counter = len(workbook.worksheets) + 3 # strings, styles, theme
         if workbook.vba_archive:
             counter += 1
         for idx, _ in enumerate(workbook._external_links, counter+1):
-            ext = Element("{%s}externalReference" % SHEET_MAIN_NS, {"{%s}id" % REL_NS:"rId%d" % idx})
+            ext = Element("externalReference", {"{%s}id" % REL_NS:"rId%d" % idx})
             external_references.append(ext)
 
     # Defined names
-    defined_names = SubElement(root, '{%s}definedNames' % SHEET_MAIN_NS)
-    _write_defined_names(workbook, defined_names)
+    defined_names = copy(workbook.defined_names) # don't add special defns to workbook itself.
 
     # Defined names -> autoFilter
-    for i, sheet in enumerate(workbook.worksheets):
+    for idx, sheet in enumerate(workbook.worksheets):
         auto_filter = sheet.auto_filter.ref
-        if not auto_filter:
-            continue
-        name = SubElement(
-            defined_names, '{%s}definedName' % SHEET_MAIN_NS,
-            dict(name='_xlnm._FilterDatabase', localSheetId=str(i), hidden='1'))
-        name.text = "'%s'!%s" % (sheet.title.replace("'", "''"),
+        if auto_filter:
+            name = Definition(name='_xlnm._FilterDatabase', localSheetId=idx, hidden=True)
+            name.value = "'%s'!%s" % (sheet.title.replace("'", "''"),
                                  absolute_coordinate(auto_filter))
+            defined_names.append(name)
 
-    SubElement(root, '{%s}calcPr' % SHEET_MAIN_NS,
+        # print titles
+        if sheet.print_titles:
+            name = Definition(name="_xlnm.PrintTitles", localSheetId=idx)
+            name.value = sheet.print_titles
+            defined_names.append(name)
+
+        # print areas
+        if sheet.print_area:
+            name = Definition(name="_xlnm.PrintArea", localSheetId=idx)
+            name.value = "{0}!{1}".format(sheet.title, sheet.print_area)
+            defined_names.append(name)
+
+    root.append(defined_names.to_tree())
+
+    SubElement(root, 'calcPr',
                {'calcId': '124519', 'fullCalcOnLoad': '1'})
     return tostring(root)
-
-
-def _write_defined_names(workbook, names):
-    """
-    Append definedName elements to the definedNames node.
-    """
-    for named_range in workbook.get_named_ranges():
-        attrs = dict(named_range)
-        if named_range.scope is not None:
-            attrs['localSheetId'] = safe_string(named_range.scope)
-
-        name = Element('{%s}definedName' % SHEET_MAIN_NS, attrs)
-        name.text = named_range.value
-        names.append(name)
 
 
 def write_workbook_rels(workbook):
@@ -184,30 +177,30 @@ def write_workbook_rels(workbook):
 
     for idx, _ in enumerate(workbook.worksheets, 1):
         rId += 1
-        rel = Relationship(type='worksheet', target='worksheets/sheet%s.xml' % idx, id='rId%d' % rId)
+        rel = Relationship(type='worksheet', Target='worksheets/sheet%s.xml' % idx, Id='rId%d' % rId)
         rels.append(rel)
 
 
     for idx, _ in enumerate(workbook.chartsheets, 1):
         rId += 1
-        rel = Relationship(type='chartsheet', target='chartsheets/sheet%s.xml' % idx, id='rId%d' % rId)
+        rel = Relationship(type='chartsheet', Target='chartsheets/sheet%s.xml' % idx, Id='rId%d' % rId)
         rels.append(rel)
 
     rId += 1
-    strings =  Relationship(type='sharedStrings', target='sharedStrings.xml', id='rId%d' % rId)
+    strings =  Relationship(type='sharedStrings', Target='sharedStrings.xml', Id='rId%d' % rId)
     rels.append(strings)
 
     rId += 1
-    styles =  Relationship(type='styles', target='styles.xml', id='rId%d' % rId)
+    styles =  Relationship(type='styles', Target='styles.xml', Id='rId%d' % rId)
     rels.append(styles)
 
     rId += 1
-    theme =  Relationship(type='theme', target='theme/theme1.xml', id='rId%d' % rId)
+    theme =  Relationship(type='theme', Target='theme/theme1.xml', Id='rId%d' % rId)
     rels.append(theme)
 
     if workbook.vba_archive:
         rId += 1
-        vba =  Relationship(type='vbaProject', target='vbaProject.bin', id='rId%d' % rId)
+        vba =  Relationship(type='vbaProject', Target='vbaProject.bin', Id='rId%d' % rId)
         vba.type ='http://schemas.microsoft.com/office/2006/relationships/vbaProject'
         rels.append(vba)
 
@@ -215,8 +208,8 @@ def write_workbook_rels(workbook):
     if external_links:
         for idx, link in enumerate(external_links, 1):
             ext =  Relationship(type='externalLink',
-                                target='externalLinks/externalLink%d.xml' % idx,
-                                id='rId%d' % (rId +idx))
+                                Target='externalLinks/externalLink%d.xml' % idx,
+                                Id='rId%d' % (rId +idx))
             rels.append(ext)
 
     return tostring(rels.to_tree())

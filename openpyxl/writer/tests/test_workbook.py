@@ -11,7 +11,7 @@ from openpyxl.tests.helper import compare_xml
 
 # package
 from openpyxl import Workbook, load_workbook
-from openpyxl.workbook.names.named_range import NamedRange
+from openpyxl.workbook.defined_name.definition import Definition
 from openpyxl.xml.functions import Element, tostring, fromstring
 from openpyxl.xml.constants import XLTX, XLSX, XLSM, XLTM
 from .. excel import (
@@ -103,33 +103,18 @@ def test_write_workbook(datadir):
 
 
 def test_write_named_range():
-    from openpyxl.writer.workbook import _write_defined_names
     wb = Workbook()
     ws = wb.active
-    xlrange = NamedRange('test_range', [(ws, "A1:B5")])
-    wb._named_ranges.append(xlrange)
-    root = Element("root")
-    _write_defined_names(wb, root)
-    xml = tostring(root)
+    wb.create_named_range("test_range", ws, value="A1:B5")
+
+    xml = tostring(wb.defined_names.to_tree())
     expected = """
-    <root>
-     <s:definedName xmlns:s="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="test_range">'Sheet'!$A$1:$B$5</s:definedName>
-    </root>
+    <definedNames>
+     <definedName name="test_range">Sheet!A1:B5</definedName>
+    </definedNames>
     """
     diff = compare_xml(xml, expected)
     assert diff is None, diff
-
-
-@pytest.mark.parametrize('tmpl, code_name', [
-    ('workbook.xml', u'ThisWorkbook'),
-    ('workbook_russian_code_name.xml', u'\u042d\u0442\u0430\u041a\u043d\u0438\u0433\u0430')
-])
-def test_read_workbook_code_name(datadir, tmpl, code_name):
-    from openpyxl.reader.workbook import read_workbook_code_name
-    datadir.chdir()
-
-    with open(tmpl, "rb") as expected:
-        assert read_workbook_code_name(expected.read()) == code_name
 
 
 def test_write_workbook_code_name():
