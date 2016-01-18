@@ -1,3 +1,35 @@
+2.4.0 (unreleased)
+==================
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from DataValidation
+* Convert AutoFilter to Serialisable and extend support for filters
+* Add support for SortState
+* Removed `use_iterators` keyword when loading workbooks. Use `read_only` instead.
+
+
+Deprecations
+------------
+
+Cell anchor method
+Worksheet point_pos method
+Worksheet add_print_title method
+Workbook get_named_range, add_named_range, remove_named_range
+Comment text attribute
+
+
+Bug fixes
+---------
+
+* `#481 <https://bitbucket.org/openpyxl/openpyxl/issues/481>`_ "safe" reserved ranges are not read from workbooks
+* `#501  <https://bitbucket.org/openpyxl/openpyxl/issues/501 >`_ Discarding named ranges can lead to corrupt files
+* `#574 <https://bitbucket.org/openpyxl/openpyxl/issues/574>`_ Exception raised when using the class method to parse Relationships
+* `#579  <https://bitbucket.org/openpyxl/openpyxl/issues/579 >`_ Crashes when reading defined names with no content
+
+
 2.3.4 (unreleased)
 ==================
 

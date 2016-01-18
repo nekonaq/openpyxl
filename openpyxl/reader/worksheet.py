@@ -10,12 +10,14 @@ from openpyxl.xml.functions import iterparse
 
 # package imports
 from openpyxl.cell import Cell
+from openpyxl.worksheet.filters import AutoFilter, SortState
 from openpyxl.cell.read_only import _cast_number
+from openpyxl.cell.text import Text
 from openpyxl.worksheet import Worksheet, ColumnDimension, RowDimension
 from openpyxl.worksheet.page import PageMargins, PrintOptions, PrintPageSetup
 from openpyxl.worksheet.protection import SheetProtection
 from openpyxl.worksheet.views import SheetView
-from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.datavalidation import DataValidationList
 from openpyxl.xml.constants import (
     SHEET_MAIN_NS,
     REL_NS,
@@ -58,20 +60,17 @@ def _get_xml_iter(xml_source):
 
 class WorkSheetParser(object):
 
-    COL_TAG = '{%s}col' % SHEET_MAIN_NS
-    ROW_TAG = '{%s}row' % SHEET_MAIN_NS
     CELL_TAG = '{%s}c' % SHEET_MAIN_NS
     VALUE_TAG = '{%s}v' % SHEET_MAIN_NS
     FORMULA_TAG = '{%s}f' % SHEET_MAIN_NS
     MERGE_TAG = '{%s}mergeCell' % SHEET_MAIN_NS
-    INLINE_STRING = "{%s}is/{%s}t" % (SHEET_MAIN_NS, SHEET_MAIN_NS)
-    INLINE_RICHTEXT = "{%s}is/{%s}r/{%s}t" % (SHEET_MAIN_NS, SHEET_MAIN_NS, SHEET_MAIN_NS)
+    INLINE_STRING = "{%s}is" % SHEET_MAIN_NS
 
     def __init__(self, wb, title, xml_source, shared_strings):
         self.ws = wb.create_sheet(title=title)
         self.source = xml_source
         self.shared_strings = shared_strings
-        self.guess_types = wb._guess_types
+        self.guess_types = wb.guess_types
         self.data_only = wb.data_only
         self.styles = self.ws.parent._cell_styles
         self.differential_styles = wb._differential_styles
@@ -95,6 +94,7 @@ class WorkSheetParser(object):
             '{%s}legacyDrawing' % SHEET_MAIN_NS: self.parse_legacy_drawing,
             '{%s}sheetViews' % SHEET_MAIN_NS: self.parse_sheet_views,
             '{%s}extLst' % SHEET_MAIN_NS: self.parse_extensions,
+            '{%s}sortState' % SHEET_MAIN_NS: self.parse_sort,
                       }
         tags = dispatcher.keys()
         stream = _get_xml_iter(self.source)
@@ -195,12 +195,11 @@ class WorkSheetParser(object):
 
         else:
             if data_type == 'inlineStr':
-                data_type = 's'
                 child = element.find(self.INLINE_STRING)
-                if child is None:
-                    child = element.find(self.INLINE_RICHTEXT)
                 if child is not None:
-                    value = child.text
+                    data_type = 's'
+                    richtext = Text.from_tree(child)
+                    value = richtext.content
 
         if self.guess_types or value is None:
             cell.value = value
@@ -273,16 +272,12 @@ class WorkSheetParser(object):
 
 
     def parse_auto_filter(self, element):
-        self.ws.auto_filter.ref = element.get("ref")
-        for fc in safe_iterator(element, '{%s}filterColumn' % SHEET_MAIN_NS):
-            filters = fc.find('{%s}filters' % SHEET_MAIN_NS)
-            if filters is None:
-                continue
-            vals = [f.get("val") for f in safe_iterator(filters, '{%s}filter' % SHEET_MAIN_NS)]
-            blank = filters.get("blank")
-            self.ws.auto_filter.add_filter_column(fc.get("colId"), vals, blank=blank)
-        for sc in safe_iterator(element, '{%s}sortCondition' % SHEET_MAIN_NS):
-            self.ws.auto_filter.add_sort_condition(sc.get("ref"), sc.get("descending"))
+        self.ws.auto_filter = AutoFilter.from_tree(element)
+
+
+    def parse_sort(self, element):
+        self.ws.sort_state = SortState.from_tree(element)
+
 
     def parse_sheet_protection(self, element):
         self.ws.protection = SheetProtection.from_tree(element)
@@ -291,9 +286,7 @@ class WorkSheetParser(object):
             self.ws.protection.set_password(password, True)
 
     def parse_data_validation(self, element):
-        for node in safe_iterator(element, "{%s}dataValidation" % SHEET_MAIN_NS):
-            dv = DataValidation.from_tree(node)
-            self.ws._data_validations.append(dv)
+        self.ws.data_validations = DataValidationList.from_tree(element)
 
 
     def parse_properties(self, element):
@@ -320,9 +313,3 @@ class WorkSheetParser(object):
             ext_type = EXT_TYPES.get(e.uri.upper(), "Unknown")
             msg = "{0} extension is not supported and will be removed".format(ext_type)
             warn(msg)
-
-
-def fast_parse(xml_source, parent, sheet_title, shared_strings):
-    parser = WorkSheetParser(parent, sheet_title, xml_source, shared_strings)
-    parser.parse()
-    return parser.ws
