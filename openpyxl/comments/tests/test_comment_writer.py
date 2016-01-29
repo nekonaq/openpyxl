@@ -1,14 +1,16 @@
 from __future__ import absolute_import
 # Copyright (c) 2010-2016 openpyxl
 
-from openpyxl import load_workbook
-from openpyxl.compat import zip
+
 from openpyxl.workbook import Workbook
 from openpyxl.worksheet import Worksheet
-from openpyxl.comments import Comment
+
 from openpyxl.tests.helper import compare_xml
+
 from openpyxl.xml.functions import fromstring, tostring, Element
-from openpyxl.xml.constants import SHEET_MAIN_NS
+
+from ..comments import Comment
+from ..properties import CommentRecord
 from ..writer import (
     CommentWriter,
     vmlns,
@@ -25,19 +27,24 @@ def _create_ws():
     ws["B2"].comment = comment1
     ws["C7"].comment = comment2
     ws["D9"].comment = comment3
-    return ws, comment1, comment2, comment3
+
+    for coord, cell in sorted(ws._cells.items()):
+        if cell._comment is not None:
+            comment = CommentRecord._adapted(cell._comment, cell.coordinate)
+            ws._comments.append(comment)
+
+    return ws
 
 
 def test_comment_writer_init():
-    ws, comment1, comment2, comment3 = _create_ws()
+    ws = _create_ws()
     cw = CommentWriter(ws)
-    assert cw.comments == []
-    assert cw.sheet == ws
+    assert len(cw.comments) == 3
 
 
 def test_write_comments(datadir):
     datadir.chdir()
-    ws = _create_ws()[0]
+    ws = _create_ws()
     cw = CommentWriter(ws)
     xml = cw.write_comments()
 
@@ -47,9 +54,10 @@ def test_write_comments(datadir):
     diff = compare_xml(xml, expected)
     assert diff is None, diff
 
+
 def test_merge_comments_vml(datadir):
     datadir.chdir()
-    ws = _create_ws()[0]
+    ws = _create_ws()
     cw = CommentWriter(ws)
     cw.write_comments()
     with open('control+comments.vml') as existing:
@@ -57,9 +65,10 @@ def test_merge_comments_vml(datadir):
     assert len(content.findall('{%s}shape' % vmlns)) == 5
     assert len(content.findall('{%s}shapetype' % vmlns)) == 2
 
+
 def test_write_comments_vml(datadir):
     datadir.chdir()
-    ws = _create_ws()[0]
+    ws = _create_ws()
     cw = CommentWriter(ws)
     cw.write_comments()
     content = cw.write_comments_vml(Element("xml"))

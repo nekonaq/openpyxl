@@ -2,7 +2,15 @@ from __future__ import absolute_import
 # Copyright (c) 2010-2016 openpyxl
 
 from openpyxl.compat import safe_string
-from openpyxl.descriptors import NoneSet, Typed, Bool, Alias
+from openpyxl.descriptors import (
+    NoneSet,
+    Typed,
+    Bool,
+    Alias,
+    Sequence,
+    Integer,
+)
+from openpyxl.descriptors.serialisable import Serialisable
 
 from .colors import ColorDescriptor
 from .hashable import HashableObject

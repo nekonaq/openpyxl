@@ -30,6 +30,7 @@ from openpyxl.utils import (
     range_boundaries,
     rows_from_range,
     coordinate_to_tuple,
+    absolute_coordinate,
 )
 from openpyxl.cell import Cell
 from openpyxl.utils.exceptions import (
@@ -40,18 +41,19 @@ from openpyxl.utils.exceptions import (
 from openpyxl.utils.units import (
     points_to_pixels,
     DEFAULT_COLUMN_WIDTH,
-    DEFAULT_ROW_HEIGHT
+    DEFAULT_ROW_HEIGHT,
 )
 from openpyxl.formatting import ConditionalFormatting
-from openpyxl.workbook.names.named_range import NamedRange
 from openpyxl.workbook.child import _WorkbookChild
+from openpyxl.workbook.defined_name import COL_RANGE_RE, ROW_RANGE_RE
 from openpyxl.utils.bound_dictionary import BoundDictionary
 
+from .datavalidation import DataValidationList
 from .header_footer import HeaderFooter
 from .page import PrintPageSetup, PageMargins, PrintOptions
 from .dimensions import ColumnDimension, RowDimension, DimensionHolder
 from .protection import SheetProtection
-from .filters import AutoFilter
+from .filters import AutoFilter, SortState
 from .views import SheetView, Pane, Selection
 from .properties import WorksheetProperties
 from .pagebreak import PageBreak
@@ -108,20 +110,24 @@ class Worksheet(_WorkbookChild):
         self._images = []
         self._rels = []
         self._drawing = None
-        self._comment_count = 0
+        self._comments = []
         self._merged_cells = []
         self.hyperlinks = set()
-        self._data_validations = []
+        self.data_validations = DataValidationList()
         self.sheet_state = self.SHEETSTATE_VISIBLE
         self.page_setup = PrintPageSetup(worksheet=self)
         self.print_options = PrintOptions()
+        self._print_rows = None
+        self._print_cols = None
+        self._print_area = None
         self.page_margins = PageMargins()
         self.header_footer = HeaderFooter()
         self.sheet_view = SheetView()
         self.protection = SheetProtection()
 
         self._current_row = 0
-        self._auto_filter = AutoFilter()
+        self.auto_filter = AutoFilter()
+        self.sort_state = SortState()
         self._freeze_panes = None
         self.paper_size = None
         self.formula_attributes = {}
@@ -191,16 +197,6 @@ class Worksheet(_WorkbookChild):
 
 
     @property
-    def auto_filter(self):
-        """Return :class:`~openpyxl.worksheet.AutoFilter` object.
-
-        `auto_filter` attribute stores/returns string until 1.8. You should change your code like ``ws.auto_filter.ref = "A1:A3"``.
-
-        .. versionchanged:: 1.9
-        """
-        return self._auto_filter
-
-    @property
     def freeze_panes(self):
         if self.sheet_view.pane is not None:
             return self.sheet_view.pane.topLeftCell
@@ -246,6 +242,8 @@ class Worksheet(_WorkbookChild):
             sel.insert(1, Selection(pane="bottomLeft", activeCell=None, sqref=None))
             view.selection = sel
 
+
+    @deprecated("Set print titles rows or columns directly")
     def add_print_title(self, n, rows_or_cols='rows'):
         """ Print Titles are rows or columns that are repeated on each printed sheet.
         This adds n rows or columns at the top or left of the sheet
@@ -254,11 +252,11 @@ class Worksheet(_WorkbookChild):
         scope = self.parent.get_index(self)
 
         if rows_or_cols == 'cols':
-            r = '$A:$%s' % get_column_letter(n)
-        else:
-            r = '$1:$%d' % n
+            self.print_title_cols = 'A:%s' % get_column_letter(n)
 
-        self.parent.create_named_range('_xlnm.Print_Titles', self, r, scope)
+        else:
+            self.print_title_rows = '1:%d' % n
+
 
     def cell(self, coordinate=None, row=None, column=None, value=None):
         """Returns a cell object based on the given coordinates.
@@ -346,11 +344,6 @@ class Worksheet(_WorkbookChild):
         return self.iter_rows()
 
 
-    @deprecated("Use the max_row property")
-    def get_highest_row(self):
-        return self.max_row
-
-
     @property
     def min_row(self):
         min_row = 1
@@ -371,11 +364,6 @@ class Worksheet(_WorkbookChild):
             rows = set(c[0] for c in self._cells)
             max_row = max(rows)
         return max_row
-
-
-    @deprecated("Use the max_column propery.")
-    def get_highest_column(self):
-        return self.max_column
 
 
     @property
@@ -474,13 +462,13 @@ class Worksheet(_WorkbookChild):
 
         :rtype: generator
         """
-        # Column name cache is very important in large files.
+
         for row in range(min_row, max_row + 1):
             yield tuple(self.cell(row=row, column=column)
                         for column in range(min_col, max_col + 1))
 
 
-    def get_named_range(self, range_string):
+    def get_named_range(self, range_name):
         """
         Returns a 2D array of cells, with optional row and column offsets.
 
@@ -489,56 +477,26 @@ class Worksheet(_WorkbookChild):
 
         :rtype: tuples of tuples of :class:`openpyxl.cell.Cell`
         """
-        named_range = self.parent.get_named_range(range_string)
-        if named_range is None:
-            msg = '%s is not a valid range name' % range_string
-            raise NamedRangeException(msg)
-        if not isinstance(named_range, NamedRange):
+        defn = self.parent.defined_names[range_name]
+        if defn.localSheetId and defn.localSheetId != self.parent.get_index(self):
+            msg = "{0} not available in this worksheet".format(range_name)
+            raise KeyError(msg)
+
+        if defn.type != "RANGE":
             msg = '%s refers to a value, not a range' % range_string
             raise NamedRangeException(msg)
 
         result = []
-        for destination in named_range.destinations:
-            worksheet, cells_range = destination
+        for title, cells_range in defn.destinations:
+            ws = self.parent[title]
+            if ws != self:
+                raise NamedRangeException("Range includes cells from another worksheet")
+            iterator = getattr(ws, "iter_rows")
 
-            if worksheet is not self:
-                msg = 'Range %s is not defined on worksheet %s' % \
-                    (cells_range, self.title)
-                raise NamedRangeException(msg)
-
-            for row in self.iter_rows(cells_range):
+            for row in iterator(cells_range):
                 result.extend(row)
 
         return tuple(result)
-
-
-    @deprecated("""
-    Use .iter_rows() working with coordinates 'A1:D4',
-    and .get_squared_range() when working with indices (1, 1, 4, 4)
-    and .get_named_range() for named ranges""")
-    def range(self, range_string, row=0, column=0):
-        """Returns a 2D array of cells, with optional row and column offsets.
-
-        :param range_string: cell range string or `named range` name
-        :type range_string: string
-
-        :param row: number of rows to offset
-        :type row: int
-
-        :param column: number of columns to offset
-        :type column: int
-
-        :rtype: tuples of tuples of :class:`openpyxl.cell.Cell`
-
-        """
-        _rs = range_string.upper()
-        m = ABSOLUTE_RE.match(_rs)
-         # R1C1 range
-        if m is not None:
-            rows = self.iter_rows(_rs, row_offset=row, column_offset=column)
-            return tuple(row for row in rows)
-        else:
-            return self.get_named_range(range_string)
 
 
     def set_printer_settings(self, paper_size, orientation):
@@ -555,8 +513,7 @@ class Worksheet(_WorkbookChild):
             object defines the type of data-validation to be applied and the
             cell or range of cells it should apply to.
         """
-        data_validation._sheet = self
-        self._data_validations.append(data_validation)
+        self.data_validations.append(data_validation)
 
     def add_chart(self, chart, anchor=None):
         """
@@ -726,6 +683,8 @@ class Worksheet(_WorkbookChild):
             cols.append(tuple(col))
         return tuple(cols)
 
+
+    @deprecated("Charts and images should be positioned using anchor objects")
     def point_pos(self, left=0, top=0):
         """ tells which cell is under the given coordinates (in pixels)
         counting from the top-left corner of the sheet.
@@ -776,3 +735,77 @@ class Worksheet(_WorkbookChild):
     def _write(self, shared_strings=None):
         from openpyxl.writer.worksheet import write_worksheet
         return write_worksheet(self, shared_strings)
+
+
+    @property
+    def print_titles(self):
+        """
+        Return the print titles for the worksheet as rows and columns,
+        if set.
+        """
+        if self.print_title_rows and self.print_title_cols:
+            return ",".join(self.print_title_rows, self.print_title_cols)
+        elif self.print_title_rows:
+            return self.print_title_rows
+        elif self.print_title_cols:
+            return self.print_title_cols
+
+
+    @property
+    def print_title_rows(self):
+        if self._print_rows:
+            return "{0}!{1}".format(self.title, self._print_rows)
+
+
+    @print_title_rows.setter
+    def print_title_rows(self, rows):
+        """
+        Set rows to be printed on the top of every page
+        format `A:B
+        """
+        if rows is not None:
+            if not ROW_RANGE_RE.match(rows):
+                raise ValueError("Print title rows must be the form 1:3")
+        self._print_rows = rows
+
+
+    @property
+    def print_title_cols(self):
+        if self._print_cols:
+            return "{0}!{1}".format(self.title, self._print_cols)
+
+
+    @print_title_cols.setter
+    def print_title_cols(self, cols):
+        """
+        Set cols to be printed on the left of every page
+        format ``1:3`
+        """
+        if cols is not None:
+            if not COL_RANGE_RE.match(cols):
+                raise ValueError("Print title cols must be the form C:D")
+        self._print_cols = cols
+
+
+    @property
+    def print_titles(self):
+        if self.print_title_cols and self.print_title_rows:
+            return ",".join([self.print_title_rows, self.print_title_cols])
+        else:
+            return self.print_title_rows or self.print_title_cols
+
+
+    @property
+    def print_area(self):
+        """
+        Return the print area for the worksheet, if set
+        """
+        return self._print_area
+
+
+    @print_area.setter
+    def print_area(self, value):
+        """
+        Range of cells in the form A1:D4
+        """
+        self._print_area = absolute_coordinate(value)
