@@ -30,6 +30,7 @@ XSD = "http://www.w3.org/2001/XMLSchema"
 simple_mapping = {
     'xsd:boolean':'Bool',
     'xsd:unsignedInt':'Integer',
+    'xsd:unsignedShort':'Integer',
     'xsd:int':'Integer',
     'xsd:double':'Float',
     'xsd:string':'String',
@@ -37,6 +38,7 @@ simple_mapping = {
     'xsd:byte':'Integer',
     'xsd:long':'Float',
     'xsd:token':'String',
+    'xsd:dateTime':'DateTime',
     's:ST_Panose':'HexBinary',
     's:ST_Lang':'String',
     'ST_Percentage':'String',
@@ -97,6 +99,9 @@ def classify(tagname, src=sheet_src, schema=None):
 
     s = """\n\nclass %s(Serialisable):\n\n""" % tagname[3:]
     attrs = []
+
+    node = derived(node)
+    node = extends(node)
 
     # attributes
     attributes = node.findall("{%s}attribute" % XSD)
@@ -194,6 +199,16 @@ def classify(tagname, src=sheet_src, schema=None):
     return s, types, children
 
 
+def derived(node):
+    base = node.find("{%s}simpleContent" % XSD)
+    return base or node
+
+
+def extends(node):
+    base = node.find("{%s}extension" % XSD)
+    return base or node
+
+
 def simple(tagname, schema, use=""):
 
     for node in schema.iterfind("{%s}simpleType" % XSD):
@@ -222,7 +237,7 @@ class ClassMaker:
     Generate
     """
 
-    def __init__(self, tagname, src=chart_src, classes=set()):
+    def __init__(self, tagname, src=sheet_src, classes=set()):
         self.schema=parse(src)
         self.types = set()
         self.classes = classes

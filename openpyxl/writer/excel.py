@@ -28,6 +28,8 @@ from openpyxl.xml.constants import (
 from openpyxl.drawing.spreadsheet_drawing import SpreadsheetDrawing
 from openpyxl.xml.functions import tostring, fromstring, Element
 from openpyxl.packaging.manifest import write_content_types
+from openpyxl.packaging.relationship import get_rels_path
+
 from openpyxl.writer.strings import write_string_table
 from openpyxl.writer.workbook import (
     write_root_rels,
@@ -35,15 +37,10 @@ from openpyxl.writer.workbook import (
     write_properties_app,
     write_workbook
     )
-from openpyxl.workbook.properties import write_properties
 from openpyxl.writer.theme import write_theme
-from openpyxl.writer.styles import StyleWriter
 from .relations import write_rels
 from openpyxl.writer.worksheet import write_worksheet
-from openpyxl.workbook.names.external import (
-    write_external_link,
-    write_external_book_rel
-)
+from openpyxl.styles.stylesheet import write_stylesheet
 
 from openpyxl.comments.writer import CommentWriter
 
@@ -58,8 +55,8 @@ class ExcelWriter(object):
     def __init__(self, workbook):
         self.workbook = workbook
         self.workbook._drawings = []
-        self.style_writer = StyleWriter(workbook)
         self.vba_modified = set()
+
 
     def write_data(self, archive, as_template=False):
         """Write the various xml files into the zip archive."""
@@ -68,7 +65,7 @@ class ExcelWriter(object):
         archive.writestr(ARC_ROOT_RELS, write_root_rels(self.workbook))
         archive.writestr(ARC_WORKBOOK_RELS, write_workbook_rels(self.workbook))
         archive.writestr(ARC_APP, write_properties_app(self.workbook))
-        archive.writestr(ARC_CORE, write_properties(self.workbook.properties))
+        archive.writestr(ARC_CORE, tostring(self.workbook.properties.to_tree()))
         if self.workbook.loaded_theme:
             archive.writestr(ARC_THEME, self.workbook.loaded_theme)
         else:
@@ -81,7 +78,8 @@ class ExcelWriter(object):
         self._write_chartsheets(archive)
         self._write_string_table(archive)
         self._write_external_links(archive)
-        archive.writestr(ARC_STYLE, self.style_writer.write_table())
+        stylesheet = write_stylesheet(self.workbook)
+        archive.writestr(ARC_STYLE, tostring(stylesheet))
 
         if self.workbook.vba_archive:
             vba_archive = self.workbook.vba_archive
@@ -141,7 +139,7 @@ class ExcelWriter(object):
                     tostring(drawing._write_rels())
                 )
 
-                rel = Relationship(type="drawing", target="/" + drawingpath)
+                rel = Relationship(type="drawing", Target="/" + drawingpath)
                 rels = RelationshipList()
                 rels.append(rel)
                 tree = rels.to_tree()
@@ -174,10 +172,10 @@ class ExcelWriter(object):
                 archive.writestr("{0}/_rels/drawing{1}.xml.rels".format(PACKAGE_DRAWINGS,
                                                                         drawing_id), tostring(drawing._write_rels()))
                 for r in sheet._rels:
-                    if "drawing" in r.type:
-                        r.target = "/" + drawingpath
+                    if "drawing" in r.Type:
+                        r.Target = "/" + drawingpath
 
-            if sheet._comment_count > 0:
+            if sheet._comments:
                 comments_id += 1
                 cw = self.comment_writer(sheet)
                 archive.writestr(PACKAGE_XL + '/comments%d.xml' % comments_id,
@@ -193,9 +191,10 @@ class ExcelWriter(object):
                         cw.write_comments_vml(vmlroot))
 
             if (sheet._rels
-                or sheet._comment_count > 0
+                or sheet._comments
                 or sheet.legacy_drawing is not None):
                 rels = write_rels(sheet, comments_id=comments_id)
+
                 archive.writestr(PACKAGE_WORKSHEETS +
                                  '/_rels/sheet%d.xml.rels' % i, tostring(rels))
 
@@ -204,16 +203,12 @@ class ExcelWriter(object):
         """Write links to external workbooks"""
         wb = self.workbook
         for idx, book in enumerate(wb._external_links, 1):
-            el = write_external_link(book.links)
-            rel = write_external_book_rel(book)
-            archive.writestr(
-                "{0}/externalLinks/externalLink{1}.xml".format(PACKAGE_XL, idx),
-                 tostring(el)
-            )
-            archive.writestr(
-                "{0}/externalLinks/_rels/externalLink{1}.xml.rels".format(PACKAGE_XL, idx),
-                tostring(rel)
-            )
+
+            book_path = "{0}/externalLinks/externalLink{1}.xml".format(PACKAGE_XL, idx)
+            archive.writestr(book_path, tostring(book.to_tree()))
+
+            rels_path = get_rels_path(book_path)
+            archive.writestr(rels_path, tostring(book.file_link.to_tree()))
 
 
     def save(self, filename, as_template=False):
