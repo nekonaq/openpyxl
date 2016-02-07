@@ -14,16 +14,19 @@ from openpyxl.utils.exceptions import CellCoordinatesException
 
 # constants
 COORD_RE = re.compile('^[$]?([A-Z]+)[$]?(\d+)$')
+COL_RANGE = """[A-Z]{1,3}:[A-Z]{1,3}:"""
+ROW_RANGE = """\d{1,3}:\d{1,3}:"""
 RANGE_EXPR = """
-[$]?(?P<min_col>[A-Z]+)
+[$]?(?P<min_col>[A-Z]{1,3})
 [$]?(?P<min_row>\d+)
-(:[$]?(?P<max_col>[A-Z]+)
+(:[$]?(?P<max_col>[A-Z]{1,3})
 [$]?(?P<max_row>\d+))?
 """
 ABSOLUTE_RE = re.compile('^' + RANGE_EXPR +'$', re.VERBOSE)
-SHEETRANGE_RE = re.compile("""
-^(('(?P<quoted>([^']|'')*)')|(?P<notquoted>[^']*))!
-(?P<cells>{0})$""".format(RANGE_EXPR), re.VERBOSE)
+SHEET_TITLE = """
+^(('(?P<quoted>([^']|'')*)')|(?P<notquoted>[^']*))!"""
+SHEETRANGE_RE = re.compile("""{0}(?P<cells>{1})$""".format(
+    SHEET_TITLE, RANGE_EXPR), re.VERBOSE)
 
 
 def get_column_interval(start, end):
@@ -52,13 +55,13 @@ def absolute_coordinate(coord_string):
     """Convert a coordinate to an absolute coordinate string (B12 -> $B$12)"""
     m = ABSOLUTE_RE.match(coord_string.upper())
     if m:
-        parts = m.groups()
-        if all(parts[-2:]):
-            return '$%s$%s:$%s$%s' % (parts[0], parts[1], parts[3], parts[4])
+        if all(m.groups()[-2:]):
+            fmt =  "${0}${1}:${3}${4}"
         else:
-            return '$%s$%s' % (parts[0], parts[1])
-    else:
-        return coord_string
+            fmt = "${0}${1}"
+        return fmt.format(*m.groups())
+    raise ValueError("Value is not a valid coordinate range")
+
 
 def _get_column_letter(col_idx):
     """Convert a column number into a column letter (3 -> 'C')

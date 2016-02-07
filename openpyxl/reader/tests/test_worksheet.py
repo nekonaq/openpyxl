@@ -14,7 +14,6 @@ from openpyxl.compat import unicode
 from openpyxl.xml.constants import SHEET_MAIN_NS
 from openpyxl.cell import Cell
 from openpyxl.utils.indexed_list import IndexedList
-from openpyxl.styles import Style
 from openpyxl.worksheet import Worksheet
 
 
@@ -75,7 +74,7 @@ def Workbook():
 
     class DummyWorkbook:
 
-        _guess_types = False
+        guess_types = False
         data_only = False
         _colors = []
 
@@ -369,8 +368,7 @@ def test_data_validation(WorkSheetParser, datadir):
 
     element = sheet.find("{%s}dataValidations" % SHEET_MAIN_NS)
     parser.parse_data_validation(element)
-    dvs = ws._data_validations
-    assert len(dvs) == 1
+    assert ws.data_validations.count == 1
 
 
 def test_read_autofilter(datadir):
@@ -386,6 +384,20 @@ def test_legacy_drawing(datadir):
     assert sheet1.legacy_drawing == 'xl/drawings/vmlDrawing1.vml'
     sheet2 = wb['Sheet2']
     assert sheet2.legacy_drawing == 'xl/drawings/vmlDrawing2.vml'
+
+
+def test_sort_state(WorkSheetParser, datadir):
+    datadir.chdir()
+
+    with open("sort_worksheet.xml") as src:
+        xml = fromstring(src.read())
+    element = xml.find("{%s}sortState" % SHEET_MAIN_NS)
+
+    parser = WorkSheetParser
+    parser.parse_sort(element)
+    sort = parser.ws.sort_state
+    assert sort.ref == "B1:B3"
+    assert len(sort.sortCondition) == 1
 
 
 def test_header_footer(WorkSheetParser, datadir):
