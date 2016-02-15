@@ -14,7 +14,6 @@ from openpyxl.compat import unicode
 from openpyxl.xml.constants import SHEET_MAIN_NS
 from openpyxl.cell import Cell
 from openpyxl.utils.indexed_list import IndexedList
-from openpyxl.styles import Style
 from openpyxl.worksheet import Worksheet
 
 
@@ -75,7 +74,7 @@ def Workbook():
 
     class DummyWorkbook:
 
-        _guess_types = False
+        guess_types = False
         data_only = False
         _colors = []
 
@@ -172,7 +171,7 @@ def test_hidden_row(datadir, WorkSheetParser):
     with open("hidden_rows_cols.xml", "rb") as src:
         rows = iterparse(src, tag='{%s}row' % SHEET_MAIN_NS)
         for _, row in rows:
-            parser.parse_row_dimensions(row)
+            parser.parse_row_row(row)
     assert 2 in ws.row_dimensions
     assert dict(ws.row_dimensions[2]) == {'hidden': '1'}
 
@@ -186,7 +185,7 @@ def test_styled_row(datadir, WorkSheetParser):
     with open("complex-styles-worksheet.xml", "rb") as src:
         rows = iterparse(src, tag='{%s}row' % SHEET_MAIN_NS)
         for _, row in rows:
-            parser.parse_row_dimensions(row)
+            parser.parse_row_row(row)
     assert 23 in ws.row_dimensions
     rd = ws.row_dimensions[23]
     assert rd.style_id == 28
@@ -359,26 +358,6 @@ def test_inline_richtext(WorkSheetParser, datadir):
     assert cell.value == "11 de September de 2014"
 
 
-def test_data_validation(WorkSheetParser, datadir):
-    parser = WorkSheetParser
-    ws = parser.ws
-    datadir.chdir()
-
-    with open("worksheet_data_validation.xml") as src:
-        sheet = fromstring(src.read())
-
-    element = sheet.find("{%s}dataValidations" % SHEET_MAIN_NS)
-    parser.parse_data_validation(element)
-    dvs = ws._data_validations
-    assert len(dvs) == 1
-
-
-def test_read_autofilter(datadir):
-    datadir.chdir()
-    wb = load_workbook("bug275.xlsx")
-    ws = wb.active
-    assert ws.auto_filter.ref == 'A1:B6'
-
 def test_legacy_drawing(datadir):
     datadir.chdir()
     wb = load_workbook("legacy_drawing.xlsm", keep_vba=True)
@@ -386,30 +365,6 @@ def test_legacy_drawing(datadir):
     assert sheet1.legacy_drawing == 'xl/drawings/vmlDrawing1.vml'
     sheet2 = wb['Sheet2']
     assert sheet2.legacy_drawing == 'xl/drawings/vmlDrawing2.vml'
-
-
-def test_header_footer(WorkSheetParser, datadir):
-    parser = WorkSheetParser
-    ws = parser.ws
-    datadir.chdir()
-
-    with open("header_footer.xml") as src:
-        sheet = fromstring(src.read())
-
-    element = sheet.find("{%s}headerFooter" % SHEET_MAIN_NS)
-    parser.parse_header_footer(element)
-
-    assert ws.header_footer.hasHeader()
-    assert ws.header_footer.left_header.font_name == "Lucida Grande,Standard"
-    assert ws.header_footer.left_header.font_color == "000000"
-    assert ws.header_footer.left_header.text == "Left top"
-    assert ws.header_footer.center_header.text== "Middle top"
-    assert ws.header_footer.right_header.text == "Right top"
-
-    assert ws.header_footer.hasFooter()
-    assert ws.header_footer.left_footer.text == "Left footer"
-    assert ws.header_footer.center_footer.text == "Middle Footer"
-    assert ws.header_footer.right_footer.text == "Right Footer"
 
 
 def test_cell_style(WorkSheetParser, datadir):
@@ -529,7 +484,7 @@ def test_row_dimensions(WorkSheetParser):
     element = fromstring(src)
 
     parser = WorkSheetParser
-    parser.parse_row_dimensions(element)
+    parser.parse_row_row(element)
 
     assert 2 not in parser.ws.row_dimensions
 
@@ -560,16 +515,18 @@ def test_shared_formulae(WorkSheetParser, datadir):
     assert ws.cell('C10').value == '=SUM(A10:A14*B10:B14)'
 
 
-def test_page_margins(WorkSheetParser, datadir):
+def test_cell_without_coordinates(WorkSheetParser, datadir):
     datadir.chdir()
+    with open("worksheet_without_coordinates.xml") as src:
+        xml = src.read()
+
+    sheet = fromstring(xml)
+
+    el = sheet.find(".//{%s}row" % SHEET_MAIN_NS)
+
     parser = WorkSheetParser
-    ws = parser.ws
-    ws.page_margins.left = 1
+    parser.shared_strings = ["Whatever"] * 10
+    parser.parse_row_row(el)
 
-    with open("header_footer.xml") as src:
-        sheet = fromstring(src.read())
-
-    el = sheet.find("{%s}pageMargins" % SHEET_MAIN_NS)
-
-    parser.parse_margins(el)
-    assert ws.page_margins.left == 0.7500000000000001
+    assert parser.ws.max_row == 1
+    assert parser.ws.max_column == 5

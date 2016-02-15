@@ -5,9 +5,6 @@ import pytest
 
 from itertools import islice
 
-# compatibility imports
-from openpyxl.compat import zip
-
 # package imports
 from openpyxl.workbook import Workbook
 from openpyxl.worksheet import flatten
@@ -129,17 +126,10 @@ class TestWorksheet:
             assert tuple(c.coordinate for c in row) == coord
 
 
-    def test_worksheet(self, Worksheet, recwarn):
-        ws = Worksheet(Workbook())
-        rows = ws.range("A1:D4")
-        w = recwarn.pop()
-        assert issubclass(w.category, UserWarning)
-
-
     def test_get_named_range(self, Worksheet):
         wb = Workbook()
-        ws = Worksheet(wb)
-        wb.create_named_range('test_range', ws, 'C5')
+        ws = wb.active
+        wb.create_named_range('test_range', ws, value='C5')
         xlrange = tuple(ws.get_named_range('test_range'))
         cell = xlrange[0]
         assert isinstance(cell, Cell)
@@ -148,14 +138,14 @@ class TestWorksheet:
 
     def test_get_bad_named_range(self, Worksheet):
         ws = Worksheet(Workbook())
-        with pytest.raises(NamedRangeException):
+        with pytest.raises(KeyError):
             ws.get_named_range('bad_range')
 
 
     def test_get_named_range_wrong_sheet(self, Worksheet):
         wb = Workbook()
-        ws1 = Worksheet(wb)
-        ws2 = Worksheet(wb)
+        ws1 = wb.create_sheet("Sheet1")
+        ws2 = wb.create_sheet("Sheet2")
         wb.create_named_range('wrong_sheet_range', ws1, 'C5')
         with pytest.raises(NamedRangeException):
             ws2.get_named_range('wrong_sheet_range')
@@ -173,23 +163,13 @@ class TestWorksheet:
 
     def test_cell_range_name(self, Worksheet):
         wb = Workbook()
-        ws = Worksheet(wb)
+        ws = wb.active
         wb.create_named_range('test_range_single', ws, 'B12')
         c_range_name = ws.get_named_range('test_range_single')
         c_range_coord = tuple(tuple(ws.iter_rows('B12'))[0])
         c_cell = ws.cell('B12')
         assert c_range_coord == (c_cell,)
         assert c_range_name == (c_cell,)
-
-
-    def test_garbage_collect(self, Worksheet):
-        ws = Worksheet(Workbook())
-        ws.cell('A1').value = ''
-        ws.cell('B2').value = '0'
-        ws.cell('C4').value = 0
-        ws.cell('D1').comment = Comment('Comment', 'Comment')
-        ws._garbage_collect()
-        assert set(ws.get_cell_collection()), set([ws.cell('B2'), ws.cell('C4') == ws.cell('D1')])
 
 
     def test_hyperlink_value(self, Worksheet):
@@ -349,11 +329,6 @@ class TestWorksheet:
 
     def test_auto_filter(self, Worksheet):
         ws = Worksheet(Workbook())
-        ws.auto_filter.ref = ws.iter_rows('a1:f1')
-        assert ws.auto_filter.ref == 'A1:F1'
-
-        ws.auto_filter.ref = ''
-        assert ws.auto_filter.ref is None
 
         ws.auto_filter.ref = 'c1:g9'
         assert ws.auto_filter.ref == 'C1:G9'
@@ -436,15 +411,38 @@ class TestWorksheet:
         ws.unmerge_cells(start_row=1, start_column=1, end_row=4, end_column=4)
 
 
-    def test_print_titles(self):
+    @pytest.mark.parametrize("value, result, rows_cols",
+                             [
+                                 (3, "Sheet!1:3", None),
+                                 (4, "Sheet!A:D", "cols")
+                             ])
+    def test_print_title_old(self, value, result, rows_cols):
         wb = Workbook()
         ws = wb.active
-        scope = wb._active_sheet_index
-        ws.add_print_title(1, rows_or_cols='rows')
-        print_titles = wb.get_named_range('_xlnm.Print_Titles')
-        assert print_titles.name == '_xlnm.Print_Titles'
-        assert str(print_titles.destinations) == """[(<Worksheet "Sheet">, '$1:$1')]"""
-        assert print_titles.scope == scope
+        ws.add_print_title(value, rows_cols)
+        assert ws.print_titles == result
+
+
+    @pytest.mark.parametrize("rows, cols, titles",
+                             [
+                                ("1:4", None, "Sheet!1:4"),
+                                (None, "A:F", "Sheet!A:F"),
+                                ("1:2", "C:D", "Sheet!1:2,Sheet!C:D"),
+                             ]
+                             )
+    def test_print_titles_new(self, rows, cols, titles):
+        wb = Workbook()
+        ws = wb.active
+        ws.print_title_rows = rows
+        ws.print_title_cols = cols
+        assert ws.print_titles == titles
+
+
+    def test_print_area(self):
+        wb = Workbook()
+        ws = wb.active
+        ws.print_area = "A1:F5"
+        assert ws.print_area == "$A$1:$F$5"
 
 
 class TestPositioning(object):

@@ -1,3 +1,44 @@
+2.4.0 (unreleased)
+==================
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from DataValidation
+* Remove deprecated methods from PrintPageSetup
+* Convert AutoFilter to Serialisable and extend support for filters
+* Add support for SortState
+* Removed `use_iterators` keyword when loading workbooks. Use `read_only` instead.
+* Removed `optimized_write` keyword for new workbooks. Use `write_only` instead.
+* Improve print title support
+* Add print area support
+* New implementation of defined names
+* New implementation of page headers and footers
+
+
+Deprecations
+------------
+
+* Cell anchor method
+* Worksheet point_pos method
+* Worksheet add_print_title method
+* Worksheet HeaderFooter attribute, replaced by individual ones
+* Workbook get_named_range, add_named_range, remove_named_range
+* Comment text attribute
+
+
+Bug fixes
+---------
+
+* `#446 <https://bitbucket.org/openpyxl/openpyxl/issues/446>`_ Workbook with definedNames corrupted by openpyxl
+* `#481 <https://bitbucket.org/openpyxl/openpyxl/issues/481>`_ "safe" reserved ranges are not read from workbooks
+* `#501 <https://bitbucket.org/openpyxl/openpyxl/issues/501 >`_ Discarding named ranges can lead to corrupt files
+* `#574 <https://bitbucket.org/openpyxl/openpyxl/issues/574>`_ Exception raised when using the class method to parse Relationships
+* `#579 <https://bitbucket.org/openpyxl/openpyxl/issues/579 >`_ Crashes when reading defined names with no content
+* `#597 <https://bitbucket.org/openpyxl/openpyxl/issues/597 >`_ Cannot read worksheets without coordinates
+
+
 2.3.4 (unreleased)
 ==================
 
