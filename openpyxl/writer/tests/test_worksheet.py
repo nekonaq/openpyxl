@@ -181,6 +181,19 @@ def test_write_cell(worksheet, value, expected):
     assert diff is None, diff
 
 
+def test_write_comment(worksheet):
+
+    from ..etree_worksheet import write_cell
+    from openpyxl.comments import Comment
+
+    ws = worksheet
+    cell = ws['A1']
+    cell.comment = Comment("test comment", "test author")
+
+    el = write_cell(ws, cell, False)
+    assert len(ws._comments) == 1
+
+
 def test_write_formula(worksheet, write_rows):
     ws = worksheet
 
@@ -271,87 +284,6 @@ def test_get_rows_to_write(worksheet):
         (10, [(1, ws['A10'])])
     ]
 
-@pytest.fixture
-def write_autofilter():
-    from .. worksheet import write_autofilter
-    return write_autofilter
-
-
-def test_auto_filter(worksheet, write_autofilter):
-    ws = worksheet
-    ws.auto_filter.ref = 'A1:F1'
-    af = write_autofilter(ws)
-    xml = tostring(af)
-    expected = """<autoFilter ref="A1:F1"></autoFilter>"""
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
-def test_auto_filter_filter_column(worksheet, write_autofilter):
-    ws = worksheet
-    ws.auto_filter.ref = 'A1:F1'
-    ws.auto_filter.add_filter_column(0, ["0"], blank=True)
-
-    af = write_autofilter(ws)
-    xml = tostring(af)
-    expected = """
-    <autoFilter ref="A1:F1">
-      <filterColumn colId="0">
-        <filters blank="1">
-          <filter val="0"></filter>
-        </filters>
-      </filterColumn>
-    </autoFilter>
-    """
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
-def test_auto_filter_sort_condition(worksheet, write_autofilter):
-    ws = worksheet
-    ws.cell('A1').value = 'header'
-    ws.cell('A2').value = 1
-    ws.cell('A3').value = 0
-    ws.auto_filter.ref = 'A2:A3'
-    ws.auto_filter.add_sort_condition('A2:A3', descending=True)
-
-    af = write_autofilter(ws)
-    xml = tostring(af)
-    expected = """
-    <autoFilter ref="A2:A3">
-    <sortState ref="A2:A3">
-      <sortCondtion descending="1" ref="A2:A3"></sortCondtion>
-    </sortState>
-    </autoFilter>
-    """
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
-def test_auto_filter_worksheet(worksheet, write_worksheet):
-    worksheet.auto_filter.ref = 'A1:F1'
-    xml = write_worksheet(worksheet, None)
-    expected = """
-    <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-      <sheetPr>
-        <outlinePr summaryBelow="1" summaryRight="1"/>
-        <pageSetUpPr/>
-      </sheetPr>
-      <dimension ref="A1:A1"/>
-      <sheetViews>
-        <sheetView workbookViewId="0">
-          <selection activeCell="A1" sqref="A1"/>
-        </sheetView>
-      </sheetViews>
-      <sheetFormatPr baseColWidth="10" defaultRowHeight="15"/>
-      <sheetData/>
-      <autoFilter ref="A1:F1"/>
-      <pageMargins bottom="1" footer="0.5" header="0.5" left="0.75" right="0.75" top="1"/>
-    </worksheet>
-    """
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
 
 def test_merge(worksheet):
     from .. worksheet import write_mergecells
@@ -379,50 +311,6 @@ def test_no_merge(worksheet):
     assert merge is None
 
 
-def test_header_footer(worksheet):
-    ws = worksheet
-    ws.header_footer.left_header.text = "Left Header Text"
-    ws.header_footer.center_header.text = "Center Header Text"
-    ws.header_footer.center_header.font_name = "Arial,Regular"
-    ws.header_footer.center_header.font_size = 6
-    ws.header_footer.center_header.font_color = "445566"
-    ws.header_footer.right_header.text = "Right Header Text"
-    ws.header_footer.right_header.font_name = "Arial,Bold"
-    ws.header_footer.right_header.font_size = 8
-    ws.header_footer.right_header.font_color = "112233"
-    ws.header_footer.left_footer.text = "Left Footer Text\nAnd &[Date] and &[Time]"
-    ws.header_footer.left_footer.font_name = "Times New Roman,Regular"
-    ws.header_footer.left_footer.font_size = 10
-    ws.header_footer.left_footer.font_color = "445566"
-    ws.header_footer.center_footer.text = "Center Footer Text &[Path]&[File] on &[Tab]"
-    ws.header_footer.center_footer.font_name = "Times New Roman,Bold"
-    ws.header_footer.center_footer.font_size = 12
-    ws.header_footer.center_footer.font_color = "778899"
-    ws.header_footer.right_footer.text = "Right Footer Text &[Page] of &[Pages]"
-    ws.header_footer.right_footer.font_name = "Times New Roman,Italic"
-    ws.header_footer.right_footer.font_size = 14
-    ws.header_footer.right_footer.font_color = "AABBCC"
-
-    from .. worksheet import write_header_footer
-    hf = write_header_footer(ws)
-    xml = tostring(hf)
-    expected = """
-    <headerFooter>
-      <oddHeader>&amp;L&amp;"Calibri,Regular"&amp;K000000Left Header Text&amp;C&amp;"Arial,Regular"&amp;6&amp;K445566Center Header Text&amp;R&amp;"Arial,Bold"&amp;8&amp;K112233Right Header Text</oddHeader>
-      <oddFooter>&amp;L&amp;"Times New Roman,Regular"&amp;10&amp;K445566Left Footer Text_x000D_And &amp;D and &amp;T&amp;C&amp;"Times New Roman,Bold"&amp;12&amp;K778899Center Footer Text &amp;Z&amp;F on &amp;A&amp;R&amp;"Times New Roman,Italic"&amp;14&amp;KAABBCCRight Footer Text &amp;P of &amp;N</oddFooter>
-    </headerFooter>
-    """
-    diff = compare_xml(xml, expected)
-    assert diff is None, diff
-
-
-def test_no_header(worksheet):
-    from .. worksheet import write_header_footer
-
-    hf = write_header_footer(worksheet)
-    assert hf is None
-
-
 def test_hyperlink(worksheet):
     from .. worksheet import write_hyperlinks
 
@@ -432,7 +320,7 @@ def test_hyperlink(worksheet):
 
     hyper = write_hyperlinks(ws)
     assert len(worksheet._rels) == 1
-    assert worksheet._rels[0].target == "http://test.com"
+    assert worksheet._rels[0].Target == "http://test.com"
     xml = tostring(hyper)
     expected = """
     <hyperlinks xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -631,6 +519,7 @@ def test_vba_rels(datadir, write_worksheet):
     fname = 'vba+comments.xlsm'
     wb = load_workbook(fname, keep_vba=True)
     ws = wb['Form Controls']
+    ws._comments = True
     xml = tostring(write_rels(ws, comments_id=1))
     expected = """
     <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -644,7 +533,7 @@ def test_vba_rels(datadir, write_worksheet):
 
 def test_write_comments(worksheet, write_worksheet):
     ws = worksheet
-    worksheet._comment_count = 1
+    worksheet._comments = True
     xml = write_worksheet(ws, None)
     expected = """
     <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"

@@ -56,10 +56,6 @@ class FileExtension(Serialisable):
         self.ContentType = ContentType
 
 
-    def __hash__(self):
-        return hash((self.Extension, self.ContentType))
-
-
 class Override(Serialisable):
 
     tagname = "Override"
@@ -70,10 +66,6 @@ class Override(Serialisable):
     def __init__(self, PartName, ContentType):
         self.PartName = PartName
         self.ContentType = ContentType
-
-
-    def __hash__(self):
-        return hash((self.PartName, self.ContentType))
 
 
 DEFAULT_TYPES = [
@@ -137,17 +129,40 @@ class Manifest(Serialisable):
         return tree
 
 
+    def __contains__(self, content_type):
+        """
+        Check whether a particular content type is contained
+        """
+        for t in self.Override:
+            if t.ContentType == content_type:
+                return True
+
+
+    def find(self, content_type):
+        """
+        Find specific content-type
+        """
+        for t in self.Override:
+            if t.ContentType == content_type:
+                return t
+
+
 def write_content_types(workbook, as_template=False, exts=None):
 
     manifest = Manifest()
+
+    if workbook.vba_archive:
+        node = fromstring(workbook.vba_archive.read(ARC_CONTENT_TYPES))
+        manifest = Manifest.from_tree(node)
+        del node
 
     if exts is not None:
         for ext in exts:
             ext = os.path.splitext(ext)[-1]
             mime = mimetypes.types_map[ext]
             fe = FileExtension(ext[1:], mime)
-            if fe not in manifest.Default:
-                manifest.Default.append(fe)
+            manifest.Default.append(fe)
+
 
     if workbook.vba_archive:
         node = fromstring(workbook.vba_archive.read(ARC_CONTENT_TYPES))
@@ -157,6 +172,7 @@ def write_content_types(workbook, as_template=False, exts=None):
         for override in DEFAULT_OVERRIDE:
             if override.PartName not in partnames:
                 manifest.Override.append(override)
+
 
     # templates
     for part in manifest.Override:
@@ -173,8 +189,8 @@ def write_content_types(workbook, as_template=False, exts=None):
 
     # ugh! can't we get this from the zip archive?
     # worksheets
-    for sheet_id, sheet in enumerate(workbook.worksheets):
-        name = '/xl/worksheets/sheet%d.xml' % (sheet_id + 1)
+    for sheet in workbook.worksheets:
+        name = '/xl/worksheets/{0}'.format(sheet._path)
         manifest.Override.append(Override(name, WORKSHEET_TYPE))
 
         if sheet._charts or sheet._images:
@@ -188,7 +204,7 @@ def write_content_types(workbook, as_template=False, exts=None):
                 name = '/xl/charts/chart%d.xml' % chart_id
                 manifest.Override.append(Override(name, CHART_TYPE))
 
-        if sheet._comment_count > 0:
+        if sheet._comments:
             comments_id += 1
             vml = FileExtension("vml", mimetypes.types_map[".vml"])
             if vml not in manifest.Default:
@@ -198,8 +214,8 @@ def write_content_types(workbook, as_template=False, exts=None):
 
 
     # chartsheets
-    for sheet_id, sheet in enumerate(workbook.chartsheets, sheet_id+1):
-        name = '/xl/chartsheets/sheet%d.xml' % (sheet_id)
+    for sheet in workbook.chartsheets:
+        name = '/xl/chartsheets/{0}'.format(sheet._path)
         manifest.Override.append(Override(name, CHARTSHEET_TYPE))
 
         if sheet._charts:
