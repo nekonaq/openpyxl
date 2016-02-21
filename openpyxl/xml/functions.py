@@ -35,7 +35,8 @@ else:
         fromstring,
         tostring,
         iterparse,
-        QName
+        QName,
+        register_namespace
         )
     except ImportError:
         from xml.etree.ElementTree import (
@@ -45,9 +46,9 @@ else:
         fromstring,
         tostring,
         iterparse,
-        QName
+        QName,
+        register_namespace
         )
-    from .namespace import register_namespace
     from et_xmlfile import xmlfile
 
 
@@ -88,13 +89,11 @@ tostring = partial(tostring, encoding="utf-8")
 
 
 def safe_iterator(node, tag=None):
-    """Return an iterator that is compatible with Python 2.6"""
+    """Return an iterator or an empty list"""
     if node is None:
         return []
-    if hasattr(node, "iter"):
-        return node.iter(tag)
-    else:
-        return node.getiterator(tag)
+    return node.iter(tag)
+
 
 
 NS_REGEX = re.compile("({(?P<namespace>.*)})?(?P<localname>.*)")
