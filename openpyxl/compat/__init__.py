@@ -17,11 +17,6 @@ try:
 except ImportError:
     from .functools import lru_cache
 
-# Python 2.6
-try:
-    from collections import OrderedDict
-except ImportError:
-    from .odict import OrderedDict
 
 try:
     range = xrange
