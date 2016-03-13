@@ -13,32 +13,32 @@ from openpyxl.utils.exceptions import ReadOnlyWorkbookException
 from openpyxl.writer.write_only import WriteOnlyWorksheet, save_dump
 from openpyxl.writer.excel import save_workbook
 
-from openpyxl.styles.styleable import StyleArray
+from openpyxl.styles.cell_style import StyleArray
 from openpyxl.styles.named_styles import NamedStyle
 
 from openpyxl.chartsheet import Chartsheet
-from . names.named_range import NamedRange
-from . properties import DocumentProperties, DocumentSecurity
+from .defined_name import DefinedName, DefinedNameList
+from openpyxl.packaging.core import DocumentProperties
+from openpyxl.packaging.relationship import RelationshipList
+from .protection import DocumentSecurity
 
 
 class Workbook(object):
     """Workbook is the container for all other parts of the document."""
 
+    _read_only = False
+    _data_only = False
+
     def __init__(self,
-                 optimized_write=False,
-                 encoding='utf-8',
-                 guess_types=False,
-                 data_only=False,
-                 read_only=False,
-                 write_only=False):
+                 write_only=False,
+                 ):
         self._sheets = []
         self._active_sheet_index = 0
-        self._named_ranges = []
+        self.defined_names = DefinedNameList()
         self._external_links = []
         self.properties = DocumentProperties()
         self.security = DocumentSecurity()
-        self.__write_only = write_only or optimized_write
-        self.__read_only = read_only
+        self.__write_only = write_only
         self.shared_strings = IndexedList()
 
         self._setup_styles()
@@ -47,17 +47,17 @@ class Workbook(object):
         self.vba_archive = None
         self.is_template = False
         self._differential_styles = []
-        self._guess_types = guess_types
-        self.data_only = data_only
         self._drawings = []
         self._charts = []
         self._images = []
         self.code_name = None
         self.excel_base_date = CALENDAR_WINDOWS_1900
-        self.encoding = encoding
+        self.encoding = "utf-8"
 
         if not self.write_only:
             self._sheets.append(Worksheet(self))
+
+        self.rels = RelationshipList()
 
 
     def _setup_styles(self):
@@ -92,7 +92,11 @@ class Workbook(object):
 
     @property
     def read_only(self):
-        return self.__read_only
+        return self._read_only
+
+    @property
+    def data_only(self):
+        return self._data_only
 
     @property
     def write_only(self):
@@ -159,7 +163,7 @@ class Workbook(object):
             raise ReadOnlyWorkbookException("Cannot create new sheet in a read-only workbook")
         cs = Chartsheet(parent=self, title=title)
 
-        self._add_sheet(cs, index=None)
+        self._add_sheet(cs, index)
         return cs
 
 
@@ -220,31 +224,40 @@ class Workbook(object):
         """
         return [s.title for s in self._sheets]
 
-    def create_named_range(self, name, worksheet, range, scope=None):
+    def create_named_range(self, name, worksheet=None, value=None, scope=None):
         """Create a new named_range on a worksheet"""
-        named_range = NamedRange(name, [(worksheet, range)], scope)
-        self.add_named_range(named_range)
+        defn = DefinedName(name=name, localSheetId=scope)
+        if worksheet is not None:
+            defn.value = "{0}!{1}".format(worksheet.title, value)
+        else:
+            defn.value = value
 
+        self.defined_names.append(defn)
+
+
+    @deprecated("Use workbook.defined_names.definedName")
     def get_named_ranges(self):
         """Return all named ranges"""
-        return self._named_ranges
+        return self.defined_names.definedName
 
+
+    @deprecated("Use workbook.defined_names.append")
     def add_named_range(self, named_range):
         """Add an existing named_range to the list of named_ranges."""
-        self._named_ranges.append(named_range)
+        self.defined_names.append(named_range)
 
+
+    @deprecated("Use workbook.defined_names[name]")
     def get_named_range(self, name):
         """Return the range specified by name."""
-        requested_range = None
-        for named_range in self._named_ranges:
-            if named_range.name == name:
-                requested_range = named_range
-                break
-        return requested_range
+        return self.defined_names[name]
 
+
+    @deprecated("Use del workbook.defined_names[name]")
     def remove_named_range(self, named_range):
         """Remove a named_range from this workbook."""
-        self._named_ranges.remove(named_range)
+        del self.defined_names[named_range]
+
 
     def save(self, filename):
         """Save the current workbook under the given `filename`.

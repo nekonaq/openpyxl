@@ -9,17 +9,18 @@ from __future__ import absolute_import
 from openpyxl.compat import range
 
 # package
+from openpyxl.cell.text import Text
 from openpyxl.compat import removed_method
 from openpyxl.xml.functions import iterparse, safe_iterator
 from openpyxl.xml.constants import SHEET_MAIN_NS
 
 from openpyxl.worksheet import Worksheet
 from openpyxl.utils import (
-    ABSOLUTE_RE,
     column_index_from_string,
     get_column_letter,
     coordinate_to_tuple,
 )
+from openpyxl.utils.cell import range_boundaries
 from openpyxl.cell.read_only import ReadOnlyCell, EMPTY_CELL
 
 
@@ -33,22 +34,10 @@ def read_dimension(source):
     for _event, element in it:
         if element.tag == DIMENSION_TAG:
             dim = element.get("ref")
-            m = ABSOLUTE_RE.match(dim.upper())
-            if m is None:
+            try:
+                return range_boundaries(dim)
+            except AttributeError:
                 return
-            min_col, min_row, sep, max_col, max_row = m.groups()
-            min_row = int(min_row)
-            if max_col is None or max_row is None:
-                max_col = min_col
-                max_row = min_row
-            else:
-                max_row = int(max_row)
-            return (
-                column_index_from_string(min_col),
-                min_row,
-                column_index_from_string(max_col),
-                max_row
-                )
 
         elif element.tag == DATA_TAG:
             # Dimensions missing
@@ -60,9 +49,9 @@ ROW_TAG = '{%s}row' % SHEET_MAIN_NS
 CELL_TAG = '{%s}c' % SHEET_MAIN_NS
 VALUE_TAG = '{%s}v' % SHEET_MAIN_NS
 FORMULA_TAG = '{%s}f' % SHEET_MAIN_NS
+INLINE_TAG = '{%s}is' % SHEET_MAIN_NS
 DIMENSION_TAG = '{%s}dimension' % SHEET_MAIN_NS
 
-CELL_TAGS = (CELL_TAG, VALUE_TAG, FORMULA_TAG)
 
 class ReadOnlyWorksheet(Worksheet):
 
@@ -111,7 +100,7 @@ class ReadOnlyWorksheet(Worksheet):
         p = iterparse(self.xml_source, tag=[ROW_TAG], remove_blank_text=True)
         for _event, element in p:
             if element.tag == ROW_TAG:
-                row_id = int(element.get("r"))
+                row_id = int(element.get("r", row_counter))
 
                 # got all the rows we need
                 if max_row is not None and row_id > max_row:
@@ -124,23 +113,23 @@ class ReadOnlyWorksheet(Worksheet):
 
                 # return cells from a row
                 if min_row <= row_id:
-                    yield tuple(self._get_row(element, min_col, max_col))
+                    yield tuple(self._get_row(element, min_col, max_col, row_counter=row_counter))
                     row_counter += 1
 
-            if element.tag in CELL_TAGS:
-                # sub-elements of rows should be skipped as handled within a cell
-                continue
-            element.clear()
+                element.clear()
 
 
-    def _get_row(self, element, min_col=1, max_col=None):
+    def _get_row(self, element, min_col=1, max_col=None, row_counter=None):
         """Return cells from a particular row"""
         col_counter = min_col
         data_only = getattr(self.parent, 'data_only', False)
 
         for cell in safe_iterator(element, CELL_TAG):
             coordinate = cell.get('r')
-            row, column = coordinate_to_tuple(coordinate)
+            if coordinate:
+                row, column = coordinate_to_tuple(coordinate)
+            else:
+                row, column = row_counter, col_counter
 
             if max_col is not None and column > max_col:
                 break
@@ -159,6 +148,12 @@ class ReadOnlyWorksheet(Worksheet):
                 if formula is not None and not data_only:
                     data_type = 'f'
                     value = "=%s" % formula
+
+                elif data_type == 'inlineStr':
+                    child = cell.find(INLINE_TAG)
+                    if child is not None:
+                        richtext = Text.from_tree(child)
+                        value = richtext.content
 
                 else:
                     value = cell.findtext(VALUE_TAG) or None
@@ -186,6 +181,9 @@ class ReadOnlyWorksheet(Worksheet):
 
     @property
     def columns(self):
+        """
+        Returning cells by column from a read-only worksheet can be very inefficient.
+        """
         if self.max_column is None:
             self.calculate_dimension()
         return super(ReadOnlyWorksheet, self).columns
