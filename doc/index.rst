@@ -146,7 +146,7 @@ This may be the case if bugs have been fixed but a release has not yet been
 made.
 
 .. parsed-literal::
-    $ pip hg+https://bitbucket.org/openpyxl/openpyxl@\ |version|\ #egg=openpyxl
+    $ pip install hg+https://bitbucket.org/openpyxl/openpyxl@\ |version|\ #egg=openpyxl
 
 
 Usage examples
@@ -204,6 +204,14 @@ Conditional Formatting
 .. toctree::
 
     formatting
+
+
+Print Settings
+++++++++++++++++++++++
+
+.. toctree::
+
+    print_settings
 
 
 Filtering and Sorting
