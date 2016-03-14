@@ -9,7 +9,7 @@ import pytest
 from openpyxl.styles.styleable import StyleArray
 from openpyxl.xml.functions import fromstring
 from openpyxl.reader.excel import load_workbook
-from openpyxl.compat import range, zip
+from openpyxl.compat import range
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def test_open_many_sheets(datadir):
                              ("sheet2.xml", (4, 1, 27, 30)),
                              ("sheet2_no_dimension.xml", None),
                              ("sheet2_no_span.xml", None),
-                             ("sheet2_invalid_dimension.xml", None),
+                             ("sheet2_invalid_dimension.xml", (None, 1, None, 113)),
                           ]
                          )
 def test_read_dimension(datadir, filename, expected):
@@ -217,7 +217,7 @@ class TestRead:
     def test_read_cols(self, sample_workbook):
         wb = sample_workbook
         ws = wb["Sheet2 - Numbers"]
-        cols = ws.columns
+        cols = tuple(ws.columns)
         first = cols[0][0]
         last = cols[-1][-1]
 
@@ -287,8 +287,10 @@ def test_read_hyperlinks_read_only(datadir, Workbook, ReadOnlyWorksheet):
 
     datadir.join("reader").chdir()
     filename = 'bug328_hyperlinks.xml'
-    ws = ReadOnlyWorksheet(Workbook(data_only=True, read_only=True), "Sheet",
-                           "", filename, ['SOMETEXT'])
+    wb = Workbook()
+    wb._read_only = True
+    wb._data_only = True
+    ws = ReadOnlyWorksheet(wb, "Sheet", "", filename, ['SOMETEXT'])
     assert ws['F2'].value is None
 
 
@@ -328,7 +330,7 @@ def test_read_row(datadir, DummyWorkbook, ReadOnlyWorksheet):
     </sheetData>
     """
 
-    ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", "bug393-worksheet.xml", [])
+    ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", "", [])
 
     xml = fromstring(src)
     row = tuple(ws._get_row(xml, 11, 11))
@@ -358,6 +360,34 @@ def test_read_empty_rows(datadir, DummyWorkbook, ReadOnlyWorksheet):
     ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", "empty_rows.xml", [])
     rows = tuple(ws.rows)
     assert len(rows) == 7
+
+
+def test_read_without_coordinates(DummyWorkbook, ReadOnlyWorksheet):
+
+    ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", "", ["Whatever"]*10)
+    src = """
+    <row xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+      <c t="s">
+        <v>2</v>
+      </c>
+      <c t="s">
+        <v>4</v>
+      </c>
+      <c t="s">
+        <v>3</v>
+      </c>
+      <c t="s">
+        <v>6</v>
+      </c>
+      <c t="s">
+        <v>9</v>
+      </c>
+    </row>
+    """
+
+    element = fromstring(src)
+    row = tuple(ws._get_row(element, min_col=1, max_col=None, row_counter=1))
+    assert row[0].value == "Whatever"
 
 
 @pytest.mark.parametrize("read_only", [False, True])

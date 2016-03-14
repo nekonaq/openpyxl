@@ -8,7 +8,7 @@ import datetime
 # package imports
 from openpyxl.workbook import Workbook
 from openpyxl.reader.excel import load_workbook
-from openpyxl.workbook.names.named_range import NamedRange
+from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.utils.exceptions import ReadOnlyWorkbookException
 
 # test imports
@@ -52,8 +52,8 @@ def test_add_sheet_from_other_workbook():
 
 
 def test_create_sheet_readonly():
-    wb = Workbook(read_only=True)
-    #wb._set_optimized_read()
+    wb = Workbook()
+    wb._read_only = True
     with pytest.raises(ReadOnlyWorkbookException):
         wb.create_sheet()
 
@@ -118,13 +118,14 @@ def test_get_sheet_names():
 
 def test_get_named_ranges():
     wb = Workbook()
-    assert wb.get_named_ranges() == wb._named_ranges
+    assert wb.get_named_ranges() == wb.defined_names.definedName
 
 
 def test_add_named_range():
     wb = Workbook()
     new_sheet = wb.create_sheet()
-    named_range = NamedRange('test_nr', [(new_sheet, 'A1')])
+    named_range = DefinedName('test_nr')
+    named_range.value = "Sheet!A1"
     wb.add_named_range(named_range)
     named_ranges_list = wb.get_named_ranges()
     assert named_range in named_ranges_list
@@ -133,30 +134,18 @@ def test_add_named_range():
 def test_get_named_range():
     wb = Workbook()
     new_sheet = wb.create_sheet()
-    named_range = NamedRange('test_nr', [(new_sheet, 'A1')])
-    wb.add_named_range(named_range)
+    wb.create_named_range('test_nr', new_sheet, 'A1')
     found_named_range = wb.get_named_range('test_nr')
-    assert named_range == found_named_range
+    assert found_named_range == wb.defined_names['test_nr']
 
 
 def test_remove_named_range():
     wb = Workbook()
     new_sheet = wb.create_sheet()
-    named_range = NamedRange('test_nr', [(new_sheet, 'A1')])
-    wb.add_named_range(named_range)
-    wb.remove_named_range(named_range)
+    wb.create_named_range('test_nr', new_sheet, 'A1')
+    wb.remove_named_range('test_nr')
     named_ranges_list = wb.get_named_ranges()
-    assert named_range not in named_ranges_list
-
-def test_add_local_named_range(tmpdir):
-    tmpdir.chdir()
-    wb = Workbook()
-    new_sheet = wb.create_sheet()
-    named_range = NamedRange('test_nr', [(new_sheet, 'A1')])
-    named_range.scope = wb.get_index(new_sheet)
-    wb.add_named_range(named_range)
-    dest_filename = 'local_named_range_book.xlsx'
-    wb.save(dest_filename)
+    assert 'test_nr' not in named_ranges_list
 
 
 def test_write_regular_date(tmpdir):
@@ -178,7 +167,7 @@ def test_write_regular_date(tmpdir):
 def test_write_regular_float(tmpdir):
     float_value = 1.0 / 3.0
     book = Workbook()
-    sheet = book.get_active_sheet()
+    sheet = book.active
     sheet.cell("A1").value = float_value
     dest_filename = 'float_read_write_issue.xlsx'
     book.save(dest_filename)
