@@ -3,7 +3,6 @@ from __future__ import absolute_import
 
 
 from openpyxl.utils.indexed_list import IndexedList
-from openpyxl.compat import iteritems
 from openpyxl.xml.constants import SHEET_MAIN_NS
 from openpyxl.xml.functions import Element, SubElement, tostring, fromstring
 from openpyxl.utils import (
@@ -12,7 +11,7 @@ from openpyxl.utils import (
 )
 
 from .author import AuthorList
-from .properties import CommentSheet, Comment
+from .properties import CommentSheet, CommentRecord
 
 vmlns = "urn:schemas-microsoft-com:vml"
 officens = "urn:schemas-microsoft-com:office:office"
@@ -23,31 +22,23 @@ class CommentWriter(object):
 
 
     def __init__(self, sheet):
-        self.sheet = sheet
-        self.comments = []
+        self.comments = sheet._comments
 
 
     def write_comments(self):
         """
         Create list of comments and authors
-        Sorted by row, col
         """
-        # produce xml
+
         authors = IndexedList()
 
-        for _coord, cell in sorted(self.sheet._cells.items()):
-            if cell.comment is not None:
-                comment = Comment(ref=cell.coordinate)
-                comment.authorId = authors.add(cell.comment.author)
-                comment.text.t = cell.comment.text
-                comment.height = cell.comment.height
-                comment.width = cell.comment.width
-                self.comments.append(comment)
+        # dedupe authors and get indexes
+        for comment in self.comments:
+            comment.authorId = authors.add(comment.author)
 
-        author_list = AuthorList(authors)
-        root = CommentSheet(authors=author_list, commentList=self.comments)
-
+        root = CommentSheet(authors=AuthorList(authors), commentList=self.comments)
         return tostring(root.to_tree())
+
 
     def add_shapetype_vml(self, root):
         shape_layout = SubElement(root, "{%s}shapelayout" % officens,
