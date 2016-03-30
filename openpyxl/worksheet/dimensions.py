@@ -14,7 +14,8 @@ from openpyxl.descriptors import (
     String,
     Alias,
 )
-from openpyxl.styles.styleable import StyleableObject, StyleArray
+from openpyxl.styles.styleable import StyleableObject
+from openpyxl.styles.cell_style import StyleArray
 
 from openpyxl.utils.bound_dictionary import BoundDictionary
 
@@ -42,20 +43,18 @@ class Dimension(Strict, StyleableObject):
 
     def __iter__(self):
         for key in self.__fields__:
-            value = getattr(self, key)
+            value = getattr(self, key, None)
+            if key in ('style', 's'):
+                value = self.style_id
             if value:
                 yield key, safe_string(value)
-
-    @property
-    @deprecated("Use `hidden` instead")
-    def visible(self):
-        return not self.hidden
 
 
 class RowDimension(Dimension):
     """Information about the display properties of a row."""
 
-    __fields__ = Dimension.__fields__ + ('ht', 'customFormat', 'customHeight', 's')
+    __fields__ = Dimension.__fields__ + ('ht', 'customFormat', 'customHeight', 's',
+                                         'thickBot', 'thickTop')
     r = Alias('index')
     s = Alias('style_id')
     ht = Float(allow_none=True)
@@ -91,6 +90,8 @@ class RowDimension(Dimension):
             hidden = not visible
         if outline_level is not None:
             outlineLevel = outlineLevel
+        self.thickBot = thickBot
+        self.thickTop = thickTop
         super(RowDimension, self).__init__(index, hidden, outlineLevel,
                                            collapsed, worksheet, style=s)
 
@@ -152,15 +153,6 @@ class ColumnDimension(Dimension):
     def customWidth(self):
         """Always true if there is a width for the column"""
         return self.width is not None
-
-    def __iter__(self):
-        for key in self.__fields__:
-            if key == 'style':
-                value = self.style_id
-            else:
-                value = getattr(self, key)
-            if value:
-                yield key, safe_string(value)
 
 
 class DimensionHolder(BoundDictionary):

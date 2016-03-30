@@ -15,12 +15,10 @@ from openpyxl.worksheet import Worksheet
 from openpyxl.worksheet.related import Related
 
 from openpyxl.utils.exceptions import WorkbookAlreadySaved
-from openpyxl.writer.excel import ExcelWriter
-from openpyxl.comments.writer import CommentWriter
+
+from .excel import ExcelWriter
 from .relations import write_rels
 from .worksheet import (
-    write_autofilter,
-    write_datavalidation,
     write_cell,
     write_cols,
     write_drawing,
@@ -38,15 +36,6 @@ def _openpyxl_shutdown():
     for path in ALL_TEMP_FILES:
         if os.path.exists(path):
             os.remove(path)
-
-
-class CommentParentCell(object):
-    __slots__ = ('coordinate', 'row', 'column')
-
-    def __init__(self, cell):
-        self.coordinate = cell.coordinate
-        self.row = cell.row
-        self.column = cell.column
 
 
 def create_temporary_file(suffix=''):
@@ -80,8 +69,6 @@ class WriteOnlyWorksheet(Worksheet):
         self._parent = parent_workbook
 
         self._fileobj_name = create_temporary_file()
-
-        self._comments = []
 
 
     @property
@@ -121,13 +108,14 @@ class WriteOnlyWorksheet(Worksheet):
                 if self.protection.sheet:
                     xf.write(worksheet.protection.to_tree())
 
-                af = write_autofilter(self)
-                if af is not None:
-                    xf.write(af)
+                if self.auto_filter.ref:
+                    xf.write(self.auto_filter.to_tree())
 
-                dv = write_datavalidation(self)
-                if dv is not None:
-                    xf.write(dv)
+                if self.sort_state.ref:
+                    xf.write(self.sort_state.to_tree())
+
+                if self.data_validations.count:
+                    xf.write(self.data_validations.to_tree())
 
                 drawing = write_drawing(self)
                 if drawing is not None:
@@ -178,10 +166,6 @@ class WriteOnlyWorksheet(Worksheet):
             except ValueError:
                 if isinstance(value, Cell):
                     cell = value
-                    if cell.comment is not None:
-                        comment = cell.comment
-                        comment._parent = CommentParentCell(cell)
-                        self._comments.append(comment)
                 else:
                     raise ValueError
 
@@ -227,18 +211,9 @@ setattr(WriteOnlyWorksheet, 'range', removed_method)
 setattr(WriteOnlyWorksheet, 'merge_cells', removed_method)
 
 
-class DumpCommentWriter(CommentWriter):
-    def extract_comments(self):
-        for comment in self.sheet._comments:
-            if comment is not None:
-                self.authors.add(comment.author)
-                self.comments.append(comment)
-
-
 def save_dump(workbook, filename):
     if workbook.worksheets == []:
         workbook.create_sheet()
     writer = ExcelWriter(workbook)
-    writer.comment_writer = DumpCommentWriter
     writer.save(filename)
     return True
