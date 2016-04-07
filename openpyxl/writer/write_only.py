@@ -10,21 +10,18 @@ import os
 from tempfile import NamedTemporaryFile
 
 from openpyxl.compat import removed_method
-from openpyxl.cell import Cell
+from openpyxl.cell import Cell, WriteOnlyCell
 from openpyxl.worksheet import Worksheet
 from openpyxl.worksheet.related import Related
+from openpyxl.worksheet.dimensions import SheetFormatProperties
 
 from openpyxl.utils.exceptions import WorkbookAlreadySaved
-from openpyxl.writer.excel import ExcelWriter
-from openpyxl.comments.writer import CommentWriter
+
+from .excel import ExcelWriter
 from .relations import write_rels
 from .worksheet import (
-    write_autofilter,
-    write_datavalidation,
     write_cell,
-    write_cols,
     write_drawing,
-    write_format,
 )
 from openpyxl.xml.constants import SHEET_MAIN_NS
 from openpyxl.xml.functions import xmlfile, Element
@@ -40,25 +37,12 @@ def _openpyxl_shutdown():
             os.remove(path)
 
 
-class CommentParentCell(object):
-    __slots__ = ('coordinate', 'row', 'column')
-
-    def __init__(self, cell):
-        self.coordinate = cell.coordinate
-        self.row = cell.row
-        self.column = cell.column
-
-
 def create_temporary_file(suffix=''):
     fobj = NamedTemporaryFile(mode='w+', suffix=suffix,
                               prefix='openpyxl.', delete=False)
     filename = fobj.name
     ALL_TEMP_FILES.append(filename)
     return filename
-
-
-def WriteOnlyCell(ws=None, value=None):
-    return Cell(worksheet=ws, column='A', row=1, value=value)
 
 
 class WriteOnlyWorksheet(Worksheet):
@@ -81,8 +65,6 @@ class WriteOnlyWorksheet(Worksheet):
 
         self._fileobj_name = create_temporary_file()
 
-        self._comments = []
-
 
     @property
     def filename(self):
@@ -101,12 +83,13 @@ class WriteOnlyWorksheet(Worksheet):
                     pr = self.sheet_properties.to_tree()
 
                 xf.write(pr)
-                views = Element('sheetViews')
-                views.append(self.sheet_view.to_tree())
-                xf.write(views)
-                xf.write(write_format(self))
+                xf.write(self.views.to_tree())
 
-                cols = write_cols(self)
+                cols = self.column_dimensions.to_tree()
+
+                self.sheet_format.outlineLevelCol = self.column_dimensions.max_outline
+                xf.write(self.sheet_format.to_tree())
+
                 if cols is not None:
                     xf.write(cols)
 
@@ -121,13 +104,14 @@ class WriteOnlyWorksheet(Worksheet):
                 if self.protection.sheet:
                     xf.write(worksheet.protection.to_tree())
 
-                af = write_autofilter(self)
-                if af is not None:
-                    xf.write(af)
+                if self.auto_filter.ref:
+                    xf.write(self.auto_filter.to_tree())
 
-                dv = write_datavalidation(self)
-                if dv is not None:
-                    xf.write(dv)
+                if self.sort_state.ref:
+                    xf.write(self.sort_state.to_tree())
+
+                if self.data_validations.count:
+                    xf.write(self.data_validations.to_tree())
 
                 drawing = write_drawing(self)
                 if drawing is not None:
@@ -178,10 +162,6 @@ class WriteOnlyWorksheet(Worksheet):
             except ValueError:
                 if isinstance(value, Cell):
                     cell = value
-                    if cell.comment is not None:
-                        comment = cell.comment
-                        comment._parent = CommentParentCell(cell)
-                        self._comments.append(comment)
                 else:
                     raise ValueError
 
@@ -227,23 +207,9 @@ setattr(WriteOnlyWorksheet, 'range', removed_method)
 setattr(WriteOnlyWorksheet, 'merge_cells', removed_method)
 
 
-class DumpCommentWriter(CommentWriter):
-
-    def _extract_comments(self):
-        from openpyxl.comments.properties import Comment
-        for comment in self.sheet._comments:
-            new_comment = Comment(ref=comment.parent.coordinate)
-            new_comment.text.t = comment.text
-            new_comment.author = comment.author
-            new_comment.height = comment.height
-            new_comment.width = comment.width
-            self.comments.append(new_comment)
-
-
 def save_dump(workbook, filename):
     if workbook.worksheets == []:
         workbook.create_sheet()
     writer = ExcelWriter(workbook)
-    writer.comment_writer = DumpCommentWriter
     writer.save(filename)
     return True

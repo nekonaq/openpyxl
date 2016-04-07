@@ -95,9 +95,11 @@ Styles can also be copied
 .. :: doctest
 
 >>> from openpyxl.styles import Font
+>>> from copy import copy
 >>>
 >>> ft1 = Font(name='Arial', size=14)
->>> ft2 = ft1.copy(name="Tahoma")
+>>> ft2 = copy(ft1)
+>>> ft2.name = "Tahoma"
 >>> ft1.name
 'Arial'
 >>> ft2.name
@@ -147,6 +149,18 @@ yourself. This is a restriction of the file format::
 >>> row = ws.row_dimensions[1]
 >>> row.font = Font(underline="single")
 
+.. _styling-merged-cells:
+
+Styling Merged Cells
+--------------------
+
+Sometimes you want to format a range of cells as if they were a single
+object. Excel pretends that this is possible by merging cells (deleting all
+but the top-left cell) and then recreating them in order to apply
+pseudo-styles.
+
+.. literalinclude:: format_merged_cells.py
+
 
 Edit Page Setup
 -------------------
@@ -163,44 +177,6 @@ Edit Page Setup
 >>> ws.page_setup.fitToWidth = 1
 
 
-Edit Print Options
--------------------
-.. :: doctest
-
->>> from openpyxl.workbook import Workbook
->>>
->>> wb = Workbook()
->>> ws = wb.active
->>>
->>> ws.print_options.horizontalCentered = True
->>> ws.print_options.verticalCentered = True
-
-
-
-Header / Footer
----------------
-
-Headers and footers use their own formatting language. This is fully
-supported when writing them but, due to the complexity and the possibility of
-nesting, only partially when reading them.
-
-
-.. :: doctest
-
->>> from openpyxl.workbook import Workbook
->>>
->>> wb = Workbook()
->>> ws = wb.worksheets[0]
->>>
->>> ws.header_footer.center_header.text = 'My Excel Page'
->>> ws.header_footer.center_header.font_size = 14
->>> ws.header_footer.center_header.font_name = "Tahoma,Bold"
->>> ws.header_footer.center_header.font_color = "CC3366"
-
-# Or just
->>> ws.header_footer.right_footer.text = 'My Right Footer'
-
-
 Worksheet Additional Properties
 -------------------------------
 
@@ -208,7 +184,7 @@ These are advanced properties for particular behaviours, the most used ones
 are the "fitTopage" page setup property and the tabColor that define the
 background color of the worksheet tab.
 
-Available properties for worksheet: "codeName",
+Available properties for worksheet:
 "enableFormatConditionsCalculation", "filterMode", "published",
 "syncHorizontal", "syncRef", "syncVertical", "transitionEvaluation",
 "transitionEntry", "tabColor". Available fields for page setup properties:

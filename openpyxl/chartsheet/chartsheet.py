@@ -15,7 +15,7 @@ from openpyxl.packaging.relationship import Relationship, RelationshipList
 from openpyxl.worksheet.drawing import Drawing
 from openpyxl.worksheet.header_footer import HeaderFooter
 from openpyxl.workbook.child import _WorkbookChild
-from openpyxl.xml.constants import SHEET_MAIN_NS
+from openpyxl.xml.constants import SHEET_MAIN_NS, REL_NS
 
 from .relation import DrawingHF, SheetBackgroundPicture
 from .properties import ChartsheetProperties
@@ -29,6 +29,8 @@ class Chartsheet(_WorkbookChild, Serialisable):
 
     tagname = "chartsheet"
     _default_title = "Chart"
+    _rel_type = "chartsheet"
+    _path = "sheet1.xml"
 
     sheetPr = Typed(expected_type=ChartsheetProperties, allow_none=True)
     sheetViews = Typed(expected_type=ChartsheetViewList)
@@ -36,7 +38,6 @@ class Chartsheet(_WorkbookChild, Serialisable):
     customSheetViews = Typed(expected_type=CustomChartsheetViews, allow_none=True)
     pageMargins = Typed(expected_type=PageMargins, allow_none=True)
     pageSetup = Typed(expected_type=PrintPageSetup, allow_none=True)
-    headerFooter = Typed(expected_type=HeaderFooter, allow_none=True)
     drawing = Typed(expected_type=Drawing, allow_none=True)
     drawingHF = Typed(expected_type=DrawingHF, allow_none=True)
     picture = Typed(expected_type=SheetBackgroundPicture, allow_none=True)
