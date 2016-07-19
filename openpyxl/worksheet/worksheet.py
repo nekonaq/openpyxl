@@ -714,8 +714,8 @@ class Worksheet(_WorkbookChild):
 
     @property
     def merged_cell_ranges(self):
-        """Public attribute for which cells have been merged"""
-        return self._merged_cells
+        """Return a copy of cell ranges"""
+        return self._merged_cells[:]
 
 
     def unmerge_cells(self, range_string=None, start_row=None, start_column=None, end_row=None, end_column=None):
@@ -868,7 +868,7 @@ class Worksheet(_WorkbookChild):
     @property
     def print_title_rows(self):
         if self._print_rows:
-            return "{0}!{1}".format(self.title, self._print_rows)
+            return u"{0}!{1}".format(self.title, self._print_rows)
 
 
     @print_title_rows.setter
@@ -886,7 +886,7 @@ class Worksheet(_WorkbookChild):
     @property
     def print_title_cols(self):
         if self._print_cols:
-            return "{0}!{1}".format(self.title, self._print_cols)
+            return u"{0}!{1}".format(self.title, self._print_cols)
 
 
     @print_title_cols.setter

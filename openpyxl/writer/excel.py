@@ -5,7 +5,7 @@ from __future__ import absolute_import
 
 # Python stdlib imports
 from io import BytesIO
-from re import match
+import re
 from zipfile import ZipFile, ZIP_DEFLATED
 
 # package imports
@@ -27,10 +27,7 @@ from openpyxl.xml.constants import (
     )
 from openpyxl.drawing.spreadsheet_drawing import SpreadsheetDrawing
 from openpyxl.xml.functions import tostring, fromstring, Element
-from openpyxl.packaging.manifest import (
-    write_content_types,
-    Manifest,
-)
+from openpyxl.packaging.manifest import Manifest
 from openpyxl.packaging.relationship import (
     get_rels_path,
     RelationshipList,
@@ -48,18 +45,11 @@ from openpyxl.writer.theme import write_theme
 from openpyxl.writer.worksheet import write_worksheet
 from openpyxl.styles.stylesheet import write_stylesheet
 
-from openpyxl.comments.shape_writer import ShapeWriter
 from openpyxl.comments.comment_sheet import CommentSheet
-
-
-ARC_VBA = ('xl/vba', r'xl/drawings/.*vmlDrawing\d\.vml', 'xl/ctrlProps', 'customUI',
-           'xl/activeX', r'xl/media/.*\.emf')
 
 
 class ExcelWriter(object):
     """Write a workbook object to an Excel file."""
-
-    comment_writer = ShapeWriter
 
     def __init__(self, workbook, archive):
         self.archive = archive
@@ -71,7 +61,6 @@ class ExcelWriter(object):
         self._images = []
         self._drawings = []
         self._comments = []
-        self.as_template = False
 
 
     def write_data(self):
@@ -94,7 +83,8 @@ class ExcelWriter(object):
         self._write_images()
         self._write_charts()
 
-        self._write_string_table()
+        self.archive.writestr(ARC_SHARED_STRINGS,
+                              write_string_table(self.workbook.shared_strings))
         self._write_external_links()
 
         stylesheet = write_stylesheet(self.workbook)
@@ -103,29 +93,29 @@ class ExcelWriter(object):
         archive.writestr(ARC_WORKBOOK, write_workbook(self.workbook))
         archive.writestr(ARC_WORKBOOK_RELS, write_workbook_rels(self.workbook))
 
+        self._merge_vba()
+
+        self.manifest._write(archive, self.workbook)
+
+    def _merge_vba(self):
+        """
+        If workbook contains macros then extract associated files from cache
+        of old file and add to archive
+        """
+        ARC_VBA = re.compile("|".join(
+            ('xl/vba', r'xl/drawings/.*vmlDrawing\d\.vml',
+             'xl/ctrlProps', 'customUI', 'xl/activeX', r'xl/media/.*\.emf')
+        )
+                             )
+
         if self.workbook.vba_archive:
-            vba_archive = self.workbook.vba_archive
-            for name in set(vba_archive.namelist()) - self.vba_modified:
-                for s in ARC_VBA:
-                    if match(s, name):
-                        archive.writestr(name, vba_archive.read(name))
-                        break
-
-        exts = []
-        for n in archive.namelist():
-            if "media" in n:
-                exts.append(n)
-
-        manifest = write_content_types(self.workbook, as_template=self.as_template, exts=exts, manifest=self.manifest)
-        archive.writestr(ARC_CONTENT_TYPES, tostring(manifest.to_tree()))
-
-
-    def _write_string_table(self):
-        self.archive.writestr(ARC_SHARED_STRINGS,
-                write_string_table(self.workbook.shared_strings))
+            for name in set(self.workbook.vba_archive.namelist()) - self.vba_modified:
+                if ARC_VBA.match(name):
+                    self.archive.writestr(name, self.workbook.vba_archive.read(name))
 
 
     def _write_images(self):
+        # delegate to object
         for img in self._images:
             buf = BytesIO()
             img.image.save(buf, format='PNG')
@@ -133,6 +123,7 @@ class ExcelWriter(object):
 
 
     def _write_charts(self):
+        # delegate to object
         for chart in self._charts:
             self.archive.writestr(chart.path[1:], tostring(chart._write()))
             self.manifest.append(chart)
@@ -166,9 +157,9 @@ class ExcelWriter(object):
             self.manifest.append(sheet)
 
             if sheet._drawing:
-                self._write_drawing(self._drawing)
+                self._write_drawing(sheet._drawing)
 
-                rel = Relationship(type="drawing", Target=self._drawing.path)
+                rel = Relationship(type="drawing", Target=sheet._drawing.path)
                 rels = RelationshipList()
                 rels.append(rel)
                 tree = rels.to_tree()
@@ -239,6 +230,7 @@ class ExcelWriter(object):
 
 
     def _write_external_links(self):
+        # delegate to object
         """Write links to external workbooks"""
         wb = self.workbook
         for idx, link in enumerate(wb._external_links, 1):
@@ -259,7 +251,7 @@ class ExcelWriter(object):
         self.archive.close()
 
 
-def save_workbook(workbook, filename, as_template=False):
+def save_workbook(workbook, filename,):
     """Save the given workbook on the filesystem under the name filename.
 
     :param workbook: the workbook to save
@@ -273,18 +265,16 @@ def save_workbook(workbook, filename, as_template=False):
     """
     archive = ZipFile(filename, 'w', ZIP_DEFLATED, allowZip64=True)
     writer = ExcelWriter(workbook, archive)
-    writer.as_template = as_template
     writer.save(filename)
     return True
 
 
-def save_virtual_workbook(workbook, as_template=False):
+def save_virtual_workbook(workbook,):
     """Return an in-memory workbook, suitable for a Django response."""
     temp_buffer = BytesIO()
     archive = ZipFile(temp_buffer, 'w', ZIP_DEFLATED, allowZip64=True)
 
     writer = ExcelWriter(workbook, archive)
-    writer.as_template = as_template
 
     try:
         writer.write_data()
