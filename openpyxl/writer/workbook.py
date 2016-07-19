@@ -24,6 +24,7 @@ from openpyxl.workbook.external_reference import ExternalReference
 from openpyxl.workbook.parser import ChildSheet, WorkbookPackage
 from openpyxl.workbook.properties import CalcProperties, WorkbookProperties
 from openpyxl.workbook.views import BookView
+from openpyxl.utils.datetime import CALENDAR_MAC_1904
 
 
 def write_root_rels(workbook):
@@ -76,9 +77,11 @@ def write_workbook(workbook):
 
     root = WorkbookPackage()
 
-    props = WorkbookProperties()
+    props = WorkbookProperties() # needs a mapping to the workbook for preservation
     if wb.code_name is not None:
         props.codeName = wb.code_name
+    if wb.excel_base_date == CALENDAR_MAC_1904:
+        props.date1904 = True
     root.workbookPr = props
 
     # book views
@@ -115,7 +118,7 @@ def write_workbook(workbook):
         auto_filter = sheet.auto_filter.ref
         if auto_filter:
             name = DefinedName(name='_FilterDatabase', localSheetId=idx, hidden=True)
-            name.value = "{0}!{1}".format(quote_sheetname(sheet.title),
+            name.value = u"{0}!{1}".format(quote_sheetname(sheet.title),
                                           absolute_coordinate(auto_filter)
                                           )
             defined_names.append(name)
@@ -129,7 +132,7 @@ def write_workbook(workbook):
         # print areas
         if sheet.print_area:
             name = DefinedName(name="Print_Area", localSheetId=idx)
-            name.value = ",".join(["{0}!{1}".format(quote_sheetname(sheet.title), r)
+            name.value = ",".join([u"{0}!{1}".format(quote_sheetname(sheet.title), r)
                                   for r in sheet.print_area])
             defined_names.append(name)
 

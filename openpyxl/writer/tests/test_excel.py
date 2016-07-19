@@ -116,6 +116,30 @@ def test_comment(ExcelWriter, archive):
     writer = ExcelWriter(None, archive)
     writer._write_comment(ws)
 
-    assert archive.namelist() == ['xl/comments1.xml', 'xl/drawings/commentsDrawing1.vml']
-    assert '/xl/comments1.xml' in writer.manifest.filenames
+    assert archive.namelist() == ['xl/comments/comment1.xml', 'xl/drawings/commentsDrawing1.vml']
+    assert '/xl/comments/comment1.xml' in writer.manifest.filenames
     assert ws.legacy_drawing == 'xl/drawings/commentsDrawing1.vml'
+
+
+def test_merge_vba(ExcelWriter, archive, datadir):
+    from openpyxl import load_workbook
+    datadir.chdir()
+    wb = load_workbook("vba+comments.xlsm", keep_vba=True)
+
+    writer = ExcelWriter(wb, archive)
+    writer._merge_vba()
+
+    assert set(archive.namelist()) ==  set([
+        'xl/vbaProject.bin',
+        'xl/drawings/vmlDrawing1.vml',
+        'xl/ctrlProps/ctrlProp3.xml',
+        'xl/ctrlProps/ctrlProp1.xml',
+        'xl/ctrlProps/ctrlProp10.xml',
+        'xl/ctrlProps/ctrlProp9.xml',
+        'xl/ctrlProps/ctrlProp4.xml',
+        'xl/ctrlProps/ctrlProp5.xml',
+        'xl/ctrlProps/ctrlProp6.xml',
+        'xl/ctrlProps/ctrlProp7.xml',
+        'xl/ctrlProps/ctrlProp8.xml',
+        'xl/ctrlProps/ctrlProp2.xml',
+    ])

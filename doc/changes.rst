@@ -5,12 +5,38 @@
 Bug fixes
 ---------
 
-* `#625 <https://bitbucket.org/openpyxl/openpyxl/issues/625>`_ Exception
-raises when inspecting EmptyCells in read-only mode
-* `547 <https://bitbucket.org/openpyxl/openpyxl/issues/547>`_ Functions for handling OOXML "escaped" ST_XStrings
-* `629 <https://bitbucket.org/openpyxl/openpyxl/issues/629>`_ Row Dimensions not supported in write-only mode
-* `530 <https://bitbucket.org/openpyxl/openpyxl/issues/530>`_ Problems when removing worksheets with charts
-* `630 <https://bitbucket.org/openpyxl/openpyxl/issues/530>`_ Cannot use SheetProtection in write-only mode
+* `#652 <https://bitbucket.org/openpyxl/openpyxl/issues/652>`_ Exception raised when epoch is 1904
+* `#642 <https://bitbucket.org/openpyxl/openpyxl/issues/642>`_ Cannot handle unicode in headers and footers in Python 2
+* `#646 <https://bitbucket.org/openpyxl/openpyxl/issues/646>`_ Cannot handle unicode sheetnames in Python 2
+
+
+Minor changes
+-------------
+
+* Add a `keep_links` option to `load_workbook`. External links contain cached
+copies of the external workbooks. If these are big it can be advantageous to
+be able to disable them.
+* Provide an example for using cell ranges in DataValidation.
+
+
+2.4.0-b1 (2016-06-08)
+=====================
+
+
+Minor changes
+-------------
+
+* Add an the alias `hide_drop_down` to DataValidation for `showDropDown` because that is how Excel works.
+
+
+Bug fixes
+---------
+
+* `#625 <https://bitbucket.org/openpyxl/openpyxl/issues/625>`_ Exception raises when inspecting EmptyCells in read-only mode
+* `#547 <https://bitbucket.org/openpyxl/openpyxl/issues/547>`_ Functions for handling OOXML "escaped" ST_XStrings
+* `#629 <https://bitbucket.org/openpyxl/openpyxl/issues/629>`_ Row Dimensions not supported in write-only mode
+* `#530 <https://bitbucket.org/openpyxl/openpyxl/issues/530>`_ Problems when removing worksheets with charts
+* `#630 <https://bitbucket.org/openpyxl/openpyxl/issues/630>`_ Cannot use SheetProtection in write-only mode
 
 
 Features

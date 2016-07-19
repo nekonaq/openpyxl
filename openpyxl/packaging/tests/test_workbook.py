@@ -1,12 +1,23 @@
 from __future__ import absolute_import
 # Copyright (c) 2010-2015 openpyxl
 
+from io import BytesIO
 from zipfile import ZipFile
 
 import pytest
 
-from ..workbook import chart_type, worksheet_type
-from openpyxl.utils.datetime import CALENDAR_WINDOWS_1900
+
+CHARTSHEET_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartsheet"
+WORKSHEET_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
+
+from openpyxl.utils.datetime import (
+    CALENDAR_MAC_1904,
+    CALENDAR_WINDOWS_1900,
+)
+from openpyxl.xml.constants import (
+    ARC_WORKBOOK,
+    ARC_WORKBOOK_RELS,
+)
 
 
 @pytest.fixture
@@ -27,15 +38,19 @@ class TestWorkbookParser:
         assert parser.sheets == []
 
 
-    def test_parse_wb(self, datadir, WorkbookParser):
+    def test_parse_calendar(self, datadir, WorkbookParser):
         datadir.chdir()
-        archive = ZipFile("bug137.xlsx")
+
+        archive = ZipFile(BytesIO(), "a")
+        archive.write("workbook_1904.xml", ARC_WORKBOOK)
+        archive.writestr(ARC_WORKBOOK_RELS, b"<root />")
+
         parser = WorkbookParser(archive)
+        assert parser.wb.excel_base_date == CALENDAR_WINDOWS_1900
 
         parser.parse()
         assert parser.wb.code_name is None
-        assert parser.wb.excel_base_date == CALENDAR_WINDOWS_1900
-        assert len(parser.sheets) == 2
+        assert parser.wb.excel_base_date == CALENDAR_MAC_1904
 
 
     def test_find_sheets(self, datadir, WorkbookParser):
@@ -51,8 +66,8 @@ class TestWorkbookParser:
             output.append([sheet.name, sheet.state, rel.Target, rel.Type])
 
         assert output == [
-            ['Chart1', 'visible', 'xl/chartsheets/sheet1.xml', chart_type],
-            ['Sheet1', 'visible', 'xl/worksheets/sheet1.xml', worksheet_type],
+            ['Chart1', 'visible', 'xl/chartsheets/sheet1.xml', CHARTSHEET_REL],
+            ['Sheet1', 'visible', 'xl/worksheets/sheet1.xml', WORKSHEET_REL],
         ]
 
 
@@ -71,3 +86,21 @@ class TestWorkbookParser:
         assert ws.print_title_rows == "Sheet!$1:$1"
         assert ws.print_titles == "Sheet!$1:$1"
         assert ws.print_area == ['$A$1:$D$5', '$B$9:$F$14']
+
+
+    def test_no_links(self, datadir, WorkbookParser):
+        datadir.chdir()
+
+        archive = ZipFile(BytesIO(), "a")
+        archive.write("workbook_links.xml", ARC_WORKBOOK)
+        archive.writestr(ARC_WORKBOOK_RELS, b"<root />")
+
+        parser = WorkbookParser(archive)
+        assert parser.wb.keep_links is True
+
+        with pytest.raises(KeyError):
+            parser.parse()
+
+        parser.wb._keep_links = False
+        parser.parse()
+        assert parser.wb._external_links == []

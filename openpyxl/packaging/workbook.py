@@ -25,9 +25,6 @@ from openpyxl.workbook.external_link.external import read_external_link
 
 from openpyxl.utils.datetime import CALENDAR_MAC_1904
 
-chart_type = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartsheet"
-worksheet_type = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
-
 
 class WorkbookParser:
 
@@ -43,15 +40,21 @@ class WorkbookParser:
         node = fromstring(src)
         package = WorkbookPackage.from_tree(node)
         if package.properties.date1904:
-            wb.excel_base_date = CALENDAR_MAC_1904
+            self.wb.excel_base_date = CALENDAR_MAC_1904
+
         self.wb.code_name = package.properties.codeName
         self.wb.active = package.active
         self.sheets = package.sheets
 
+        #external links contain cached worksheets and can be very big
+        if not self.wb.keep_links:
+            package.externalReferences = []
+
         for ext_ref in package.externalReferences:
             rel = self.rels[ext_ref.id]
-            self.wb._external_links.append(read_external_link(self.archive,
-                                                              rel.Target))
+            self.wb._external_links.append(
+                read_external_link(self.archive, rel.Target)
+            )
 
         if package.definedNames:
             self.wb.defined_names = package.definedNames
@@ -70,7 +73,7 @@ class WorkbookParser:
         defns = []
         for defn in self.wb.defined_names.definedName:
             reserved = defn.is_reserved
-            if reserved:
+            if reserved in ("Print_Titles", "Print_Area"):
                 sheet = self.wb._sheets[defn.localSheetId]
                 if reserved == "Print_Titles":
                     rows, cols = _unpack_print_titles(defn)
@@ -78,8 +81,6 @@ class WorkbookParser:
                     sheet.print_title_cols = cols
                 elif reserved == "Print_Area":
                     sheet.print_area = _unpack_print_area(defn)
-                else:
-                    defns.append(defn)
                 continue
             else:
                 defns.append(defn)
