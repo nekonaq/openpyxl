@@ -482,27 +482,6 @@ class TestWorksheet:
         assert ws.print_area == result
 
 
-class TestPositioning(object):
-    def test_point(self):
-        wb = Workbook()
-        ws = wb.active
-        assert ws.point_pos(top=40, left=150), ('C' == 3)
-
-
-    @pytest.mark.parametrize("value", ('A1', 'D52', 'X11'))
-    def test_roundtrip(self, value):
-        wb = Workbook()
-        ws = wb.active
-        assert ws.point_pos(*ws.cell(value).anchor) == coordinate_from_string(value)
-
-
-    def test_point_negative(self):
-        wb = Workbook()
-        ws = wb.active
-        with pytest.raises(ValueError):
-            assert ws.point_pos(top=-1, left=-1)
-
-
 def test_freeze_panes_horiz(Worksheet):
     ws = Worksheet(Workbook())
     ws.freeze_panes = 'A4'
