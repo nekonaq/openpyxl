@@ -1,3 +1,20 @@
+2.5.0 (unreleased)
+==================
+
+
+Compatibility
+-------------
+
+* Dropped support for Python 2.6 and 3.3. openpyxl will not run with Python 2.6
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from Cell
+* Remove deprecated methods from Worksheet
+
+
 2.4.4 (unreleased)
 ==================
 * `#762 <https://bitbucket.org/openpyxl/openpyxl/issues/762>`_ openpyxl can create files with invalid style indices
@@ -24,6 +41,7 @@ Bug fixes
 * `#754 <https://bitbucket.org/openpyxl/openpyxl/issues/754>`_ Incorrect descriptor for Filter values
 * `#756 <https://bitbucket.org/openpyxl/openpyxl/issues/756>`_ Potential XXE vulerability
 * `#758 <https://bitbucket.org/openpyxl/openpyxl/issues/758>`_ Cannot create files with page breaks and charts
+* `#759 <https://bitbucket.org/openpyxl/openpyxl/issues/759>`_ Problems with sheetnames that contain commas
 
 
 Minor Changes
