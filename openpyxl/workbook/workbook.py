@@ -4,7 +4,6 @@ from __future__ import absolute_import
 """Workbook is the top-level container for all document information."""
 
 from openpyxl.compat import deprecated
-from openpyxl.compat import OrderedDict
 from openpyxl.worksheet import Worksheet
 from openpyxl.worksheet.read_only import ReadOnlyWorksheet
 from openpyxl.worksheet.copier import WorksheetCopy
@@ -25,6 +24,8 @@ from .defined_name import DefinedName, DefinedNameList
 from openpyxl.packaging.core import DocumentProperties
 from openpyxl.packaging.relationship import RelationshipList
 from .protection import DocumentSecurity
+from .properties import CalcProperties
+
 
 from openpyxl.xml.constants import (
     XLSM,
@@ -69,6 +70,7 @@ class Workbook(object):
             self._sheets.append(Worksheet(self))
 
         self.rels = RelationshipList()
+        self.calculation = CalcProperties()
 
 
     def _setup_styles(self):
