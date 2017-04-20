@@ -11,7 +11,12 @@ Compatibility
 Deprecations
 ------------
 
-Dropped the anchor method from images and additional constructor arguments
+* Dropped the anchor method from images and additional constructor arguments
+
+
+Bugfixes
+--------
+* `#779 <https://bitbucket.org/openpyxl/openpyxl/issues/779>`_ Fails to recognise Chinese date format`
 
 
 Minor changes
@@ -19,15 +24,36 @@ Minor changes
 
 * Remove deprecated methods from Cell
 * Remove deprecated methods from Worksheet
+* Added read/write support for the datetime type for cells
 
 
-2.4.5 (unreleased)
+2.4.7 (unreleased)
+==================
+
+
+2.4.6 (2017-04-14)
 ==================
 
 
 Bugfixes
 --------
-* `#750 <https://bitbucket.org/openpyxl/openpyxl/issues/750>`_ Image files can
+* `#776 <https://bitbucket.org/openpyxl/openpyxl/issues/776>`_ Cannot apply formatting to plot area`
+* `#780 <https://bitbucket.org/openpyxl/openpyxl/issues/780>`_ Exception when element attributes are Python keywords`
+* `#781 <https://bitbucket.org/openpyxl/openpyxl/issues/781>`_ Exception raised when saving files with styled columns`
+* `#785 <https://bitbucket.org/openpyxl/openpyxl/issues/785>`_ Number formats for data labels are incorrect`
+* `#788 <https://bitbucket.org/openpyxl/openpyxl/issues/788>`_ Worksheet titles not quoted in defined names`
+* `#800 <https://bitbucket.org/openpyxl/openpyxl/issues/800>`_ Font underlines not read correctly`
+
+
+2.4.5 (2017-03-07)
+==================
+
+
+Bugfixes
+--------
+* `#750 <https://bitbucket.org/openpyxl/openpyxl/issues/750>`_ Adding images keeps file handles open
+* `#772 <https://bitbucket.org/openpyxl/openpyxl/issues/772>`_ Exception for column-only ranges
+* `#773 <https://bitbucket.org/openpyxl/openpyxl/issues/773>`_ Cannot copy worksheets with non-ascii titles on Python 2
 
 
 Pull requests

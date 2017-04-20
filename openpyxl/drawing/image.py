@@ -3,7 +3,6 @@ from __future__ import division
 # Copyright (c) 2010-2017 openpyxl
 
 from io import BytesIO
-from .drawing import Drawing
 
 
 def bounding_box(bw, bh, w, h):
@@ -38,10 +37,11 @@ def _import_image(img):
 
 
 class Image(object):
-    """ Raw Image class """
+    """Image in a spreadsheet"""
 
     _id = 1
     _path = "/xl/media/image{0}.{1}"
+    anchor = "A1"
 
     def __init__(self, img):
 
@@ -49,12 +49,12 @@ class Image(object):
 
         # don't keep the image open
         image = _import_image(img)
-        self.format = image.format.lower()
-
-        # the containing drawing
-        self.drawing = Drawing()
-        self.drawing.width = image.size[0]
-        self.drawing.height = image.size[1]
+        self.width = image.size[0]
+        self.height = image.size[1]
+        try:
+            self.format = image.format.lower()
+        except AttributeError:
+            self.format = "png"
 
 
     def _data(self):

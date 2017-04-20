@@ -8,6 +8,7 @@ from openpyxl.worksheet import Worksheet
 from openpyxl.worksheet.read_only import ReadOnlyWorksheet
 from openpyxl.worksheet.copier import WorksheetCopy
 
+from openpyxl.utils import quote_sheetname
 from openpyxl.utils.indexed_list import IndexedList
 from openpyxl.utils.datetime  import CALENDAR_WINDOWS_1900
 from openpyxl.utils.exceptions import ReadOnlyWorkbookException
@@ -46,6 +47,7 @@ class Workbook(object):
 
     def __init__(self,
                  write_only=False,
+                 iso_dates=False,
                  ):
         self._sheets = []
         self._active_sheet_index = 0
@@ -65,6 +67,7 @@ class Workbook(object):
         self.code_name = None
         self.excel_base_date = CALENDAR_WINDOWS_1900
         self.encoding = "utf-8"
+        self.iso_dates = iso_dates
 
         if not self.write_only:
             self._sheets.append(Worksheet(self))
@@ -266,7 +269,7 @@ class Workbook(object):
         """Create a new named_range on a worksheet"""
         defn = DefinedName(name=name, localSheetId=scope)
         if worksheet is not None:
-            defn.value = "{0}!{1}".format(worksheet.title, value)
+            defn.value = "{0}!{1}".format(quote_sheetname(worksheet.title), value)
         else:
             defn.value = value
 
@@ -363,7 +366,7 @@ class Workbook(object):
         if self.__write_only or self._read_only:
             raise ValueError("Cannot copy worksheets in read-only or write-only mode")
 
-        new_title = "{0} Copy".format(from_worksheet.title)
+        new_title = u"{0} Copy".format(from_worksheet.title)
         to_worksheet = self.create_sheet(title=new_title)
         cp = WorksheetCopy(source_worksheet=from_worksheet, target_worksheet=to_worksheet)
         cp.copy_worksheet()

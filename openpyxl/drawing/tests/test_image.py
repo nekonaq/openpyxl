@@ -17,25 +17,6 @@ def Image():
     return Image
 
 
-class DummySheet:
-    """Required for images"""
-
-    def point_pos(self, vertical, horizontal):
-        return vertical, horizontal
-
-
-class DummyCell:
-    """Required for images"""
-
-    column = "A"
-    col_idx = 1
-    row = 1
-    anchor = (0, 0)
-
-    def __init__(self):
-        self.parent = DummySheet()
-
-
 class TestImage:
 
     @pytest.mark.pil_not_installed
@@ -51,9 +32,9 @@ class TestImage:
         datadir.chdir()
         i = Image(img="plain.png")
         assert i.format == "png"
-        d = i.drawing
-        assert d.width == 118
-        assert d.height == 118
+        assert i.width == 118
+        assert i.height == 118
+        assert i.anchor == "A1"
 
 
     @pytest.mark.pil_required

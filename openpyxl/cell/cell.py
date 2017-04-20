@@ -185,7 +185,8 @@ class Cell(StyleableObject):
             pass
 
         elif isinstance(value, TIME_TYPES):
-            value = self._cast_datetime(value)
+            value = self._set_time_format(value)
+            self.data_type = "d"
 
         elif isinstance(value, STRING_TYPES):
             value = self.check_string(value)
@@ -255,35 +256,37 @@ class Cell(StyleableObject):
             else:
                 pattern = "%H:%M:%S"
                 fmt = numbers.FORMAT_DATE_TIME6
-            value = datetime.datetime.strptime(value, pattern)
             self.number_format = fmt
-            return time_to_days(value)
+            value = datetime.datetime.strptime(value, pattern)
+            return value.time()
 
 
-    def _cast_datetime(self, value):
-        """Convert Python datetime to Excel and set formatting"""
+    def _set_time_format(self, value):
+        """Set number format for Python date or time"""
         if isinstance(value, datetime.datetime):
-            value = to_excel(value, self.base_date)
+            #value = to_excel(value, self.base_date)
             self.number_format = numbers.FORMAT_DATE_DATETIME
         elif isinstance(value, datetime.date):
-            value = to_excel(value, self.base_date)
+            #value = to_excel(value, self.base_date)
             self.number_format = numbers.FORMAT_DATE_YYYYMMDD2
         elif isinstance(value, datetime.time):
-            value = time_to_days(value)
+            #value = time_to_days(value)
             self.number_format = numbers.FORMAT_DATE_TIME6
         elif isinstance(value, datetime.timedelta):
-            value = timedelta_to_days(value)
+            #value = timedelta_to_days(value)
             self.number_format = numbers.FORMAT_DATE_TIMEDELTA
         return value
 
     @property
     def value(self):
         """Get or set the value held in the cell.
-            ':rtype: depends on the value (string, float, int or '
-            ':class:`datetime.datetime`)'"""
+
+        :rtype: depends on the value (string, float, int or
+            :class:`datetime.datetime`)
+        """
         value = self._value
-        if value is not None and self.is_date:
-            value = from_excel(value, self.base_date)
+        #if value is not None and self.is_date:
+            #value = from_excel(value, self.base_date)
         return value
 
     @value.setter
@@ -326,9 +329,10 @@ class Cell(StyleableObject):
 
         :rtype: bool
         """
-        if self.data_type == "n" and self.number_format != "General":
-            return is_date_format(self.number_format)
-        return False
+        return self.data_type == 'd' or (
+            self.data_type == 'n' and is_date_format(self.number_format)
+            )
+
 
     def offset(self, row=0, column=0):
         """Returns a cell location relative to this cell.
