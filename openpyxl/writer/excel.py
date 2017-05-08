@@ -61,6 +61,7 @@ class ExcelWriter(object):
         self._images = []
         self._drawings = []
         self._comments = []
+        self._pivots = []
 
 
     def write_data(self):
@@ -191,6 +192,8 @@ class ExcelWriter(object):
 
     def _write_worksheets(self):
 
+        pivot_caches = set()
+
         for idx, ws in enumerate(self.workbook.worksheets, 1):
 
             ws._id = idx
@@ -221,6 +224,18 @@ class ExcelWriter(object):
                 t._write(self._archive)
                 self.manifest.append(t)
                 ws._rels[t._rel_id].Target = t.path
+
+            for p in ws._pivots:
+                if p.cache not in pivot_caches:
+                    pivot_caches.add(p.cache)
+                    p.cache._id = len(pivot_caches)
+
+                self._pivots.append(p)
+                p._id = len(self._pivots)
+                p._write(self._archive, self.manifest)
+                self.workbook._pivots.append(p)
+                r = Relationship(Type=p.rel_type, Target=p.path)
+                ws._rels.append(r)
 
             if ws._rels:
                 tree = ws._rels.to_tree()
