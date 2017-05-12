@@ -15,7 +15,11 @@ from openpyxl.descriptors import (
     Alias,
 )
 
-from openpyxl.descriptors.excel import ExtensionList, Percentage
+from openpyxl.descriptors.excel import (
+    ExtensionList,
+    Percentage,
+    _explicit_none,
+)
 from openpyxl.descriptors.nested import (
     NestedValue,
     NestedSet,
@@ -80,8 +84,8 @@ class _BaseAxis(Serialisable):
     title = TitleDescriptor()
     numFmt = NumberFormatDescriptor()
     number_format = Alias("numFmt")
-    majorTickMark = NestedNoneSet(values=(['cross', 'in', 'out']))
-    minorTickMark = NestedNoneSet(values=(['cross', 'in', 'out']))
+    majorTickMark = NestedNoneSet(values=(['cross', 'in', 'out']), to_tree=_explicit_none)
+    minorTickMark = NestedNoneSet(values=(['cross', 'in', 'out']), to_tree=_explicit_none)
     tickLblPos = NestedNoneSet(values=(['high', 'low', 'nextTo']))
     spPr = Typed(expected_type=GraphicalProperties, allow_none=True)
     graphicalProperties = Alias('spPr')
@@ -325,7 +329,7 @@ class DateAxis(_BaseAxis):
                  auto=None,
                  lblOffset=None,
                  baseTimeUnit=None,
-                 majorUnit=1,
+                 majorUnit=None,
                  majorTimeUnit=None,
                  minorUnit=None,
                  minorTimeUnit=None,

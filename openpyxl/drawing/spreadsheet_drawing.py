@@ -239,6 +239,7 @@ class SpreadsheetDrawing(Serialisable):
 
     tagname = "wsDr"
     mime_type = "application/vnd.openxmlformats-officedocument.drawing+xml"
+    _rel_type = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"
     _path = PartName="/xl/drawings/drawing{0}.xml"
     _id = None
 
@@ -338,3 +339,21 @@ class SpreadsheetDrawing(Serialisable):
     @property
     def path(self):
         return self._path.format(self._id)
+
+
+    @property
+    def _chart_rels(self):
+        """
+        Get relationship information for each chart and bind anchor to it
+        """
+        rels = []
+        anchors = self.absoluteAnchor + self.oneCellAnchor + self.twoCellAnchor
+        for anchor in anchors:
+            if anchor.graphicFrame is not None:
+                graphic = anchor.graphicFrame.graphic
+                rel = graphic.graphicData.chart
+                if rel is not None:
+                    rel.anchor = anchor
+                    rel.anchor.graphicFrame = None
+                    rels.append(rel)
+        return rels
