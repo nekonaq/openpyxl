@@ -1,3 +1,37 @@
+2.5.0 (unreleased)
+==================
+
+
+Compatibility
+-------------
+
+* Dropped support for Python 2.6 and 3.3. openpyxl will not run with Python 2.6
+
+
+Deprecations
+------------
+
+* Dropped the anchor method from images and additional constructor arguments
+
+
+Bugfixes
+--------
+* `#779 <https://bitbucket.org/openpyxl/openpyxl/issues/779>`_ Fails to recognise Chinese date format`
+
+
+Pull requests
+-------------
+* `163 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/163>`_ Improved GradientFill
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from Cell
+* Remove deprecated methods from Worksheet
+* Added read/write support for the datetime type for cells
+
+
 2.4.8 (unreleased)
 ==================
 

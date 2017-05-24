@@ -4,7 +4,6 @@ from __future__ import absolute_import
 """Workbook is the top-level container for all document information."""
 
 from openpyxl.compat import deprecated
-from openpyxl.compat import OrderedDict
 from openpyxl.worksheet import Worksheet
 from openpyxl.worksheet.read_only import ReadOnlyWorksheet
 from openpyxl.worksheet.copier import WorksheetCopy
@@ -34,6 +33,8 @@ from .defined_name import DefinedName, DefinedNameList
 from openpyxl.packaging.core import DocumentProperties
 from openpyxl.packaging.relationship import RelationshipList
 from .protection import DocumentSecurity
+from .properties import CalcProperties
+
 
 from openpyxl.xml.constants import (
     XLSM,
@@ -54,6 +55,7 @@ class Workbook(object):
 
     def __init__(self,
                  write_only=False,
+                 iso_dates=False,
                  ):
         self._sheets = []
         self._active_sheet_index = 0
@@ -73,11 +75,13 @@ class Workbook(object):
         self.code_name = None
         self.excel_base_date = CALENDAR_WINDOWS_1900
         self.encoding = "utf-8"
+        self.iso_dates = iso_dates
 
         if not self.write_only:
             self._sheets.append(Worksheet(self))
 
         self.rels = RelationshipList()
+        self.calculation = CalcProperties()
 
 
     def _setup_styles(self):

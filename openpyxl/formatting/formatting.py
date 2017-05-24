@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 # Copyright (c) 2010-2017 openpyxl
 
-from openpyxl.compat import OrderedDict
+from collections import OrderedDict
+
 from openpyxl.descriptors import (
     Bool,
     String,
