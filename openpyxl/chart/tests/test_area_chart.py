@@ -86,6 +86,17 @@ class TestAreaChart:
                <axId val="10"></axId>
                <axId val="100"></axId>
              </areaChart>
+             <catAx>
+               <axId val="10"></axId>
+               <scaling>
+                 <orientation val="minMax"></orientation>
+               </scaling>
+               <axPos val="l" />
+               <majorTickMark val="none" />
+               <minorTickMark val="none" />
+               <crossAx val="100"></crossAx>
+               <lblOffset val="100"></lblOffset>
+             </catAx>
              <valAx>
                <axId val="100"></axId>
                <scaling>
@@ -93,17 +104,10 @@ class TestAreaChart:
                </scaling>
                <axPos val="l" />
                <majorGridlines/>
+               <majorTickMark val="none" />
+               <minorTickMark val="none" />
                <crossAx val="10"></crossAx>
              </valAx>
-             <catAx>
-               <axId val="10"></axId>
-               <scaling>
-                 <orientation val="minMax"></orientation>
-               </scaling>
-               <axPos val="l" />
-               <crossAx val="100"></crossAx>
-               <lblOffset val="100"></lblOffset>
-             </catAx>
            </plotArea>
            <legend>
              <legendPos val="r"></legendPos>
