@@ -1,9 +1,6 @@
 from __future__ import absolute_import
 # Copyright (c) 2010-2017 openpyxl
 
-# compatibility imports
-from openpyxl.compat import OrderedDict
-
 # package imports
 from openpyxl.reader.excel import load_workbook
 from openpyxl.xml.functions import tostring
@@ -127,7 +124,7 @@ def test_conditional_formatting_read(datadir):
     reference_file = 'conditional-formatting.xlsx'
     wb = load_workbook(reference_file)
     ws = wb.active
-    rules = ws.conditional_formatting.cf_rules
+    rules = ws.conditional_formatting
     assert len(rules) == 30
 
     # First test the conditional formatting rules read
