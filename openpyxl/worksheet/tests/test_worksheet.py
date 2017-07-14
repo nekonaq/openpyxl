@@ -482,27 +482,6 @@ class TestWorksheet:
         assert ws.print_area == result
 
 
-class TestPositioning(object):
-    def test_point(self):
-        wb = Workbook()
-        ws = wb.active
-        assert ws.point_pos(top=40, left=150), ('C' == 3)
-
-
-    @pytest.mark.parametrize("value", ('A1', 'D52', 'X11'))
-    def test_roundtrip(self, value):
-        wb = Workbook()
-        ws = wb.active
-        assert ws.point_pos(*ws.cell(value).anchor) == coordinate_from_string(value)
-
-
-    def test_point_negative(self):
-        wb = Workbook()
-        ws = wb.active
-        with pytest.raises(ValueError):
-            assert ws.point_pos(top=-1, left=-1)
-
-
 def test_freeze_panes_horiz(Worksheet):
     ws = Worksheet(Workbook())
     ws.freeze_panes = 'A4'
@@ -564,3 +543,21 @@ def test_max_row(Worksheet):
     ws.append([])
     ws.append([4])
     assert ws.max_row == 4
+
+
+def test_add_chart(Worksheet):
+    from openpyxl.chart import BarChart
+    ws = Worksheet(DummyWorkbook())
+    chart = BarChart()
+    ws.add_chart(chart, "A1")
+    assert chart.anchor == "A1"
+
+
+@pytest.mark.pil_required
+def test_add_image(Worksheet):
+    from openpyxl.drawing.image import Image
+    from PIL.Image import Image as PILImage
+
+    ws = Worksheet(DummyWorkbook())
+    im = Image(PILImage())
+    ws.add_image(im, "D5")
