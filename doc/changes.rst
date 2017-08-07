@@ -6,6 +6,12 @@ Bugfixes
 --------
 * `#811 <https://bitbucket.org/openpyxl/openpyxl/issues/811>`_ Scoped definedNames not removed when worksheet is deleted
 * `#824 <https://bitbucket.org/openpyxl/openpyxl/issues/824>`_ Raise an exception if a chart is used in multiple sheets
+* `#849 <https://bitbucket.org/openpyxl/openpyxl/issues/849>`_ Conditional formats with no sqref cause an exception
+
+
+Pull requests
+-------------
+* `#179 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/179>`_ Cells kept in a set
 
 
 2.4.8 (2017-05-30)
@@ -15,9 +21,11 @@ Bugfixes
 Bugfixes
 --------
 * AutoFilter.sortState being assignd to the ws.sortState
+* `#766 <https://bitbucket.org/openpyxl/openpyxl/issues/666>`_ Sheetnames with apostrophes need additional escaping
 * `#729 <https://bitbucket.org/openpyxl/openpyxl/issues/729>`_ Cannot open files created by Microsoft Dynamics
 * `#819 <https://bitbucket.org/openpyxl/openpyxl/issues/819>`_ Negative percents not case correctly
 * `#821 <https://bitbucket.org/openpyxl/openpyxl/issues/821>`_ Runtime imports can cause deadlock
+* `#855 <https://bitbucket.org/openpyxl/openpyxl/issues/855>`_ Print area containing only columns leads to corrupt file
 
 
 Minor changes
