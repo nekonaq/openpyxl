@@ -15,7 +15,10 @@ from openpyxl.descriptors import (
     Integer,
 )
 from openpyxl.descriptors.nested import NestedText
-from openpyxl.compat import OrderedDict, safe_string, unicode
+from openpyxl.compat import (
+    safe_string,
+    unicode,
+)
 from openpyxl.utils import (
     rows_from_range,
     coordinate_to_tuple,
