@@ -1,3 +1,71 @@
+2.5.0 (unreleased)
+==================
+
+
+Bugfixes
+--------
+* `#848 <https://bitbucket.org/openpyxl/openpyxl/issues/848>`_ Reading workbooks with Pie Charts raises an exception
+* `#857 <https://bitbucket.org/openpyxl/openpyxl/issues/857>`_ Pivot Tables without Worksheet Sources raise an exception
+
+
+2.5.0-a2 (2015-06-25)
+=====================
+
+
+Major Changes
+-------------
+
+* Read support for charts
+
+
+Bugfixes
+--------
+* `#833 <https://bitbucket.org/openpyxl/openpyxl/issues/833>`_ Cannot access chartsheets by title
+* `#834 <https://bitbucket.org/openpyxl/openpyxl/issues/834>`_ Preserve workbook views
+* `#841 <https://bitbucket.org/openpyxl/openpyxl/issues/841>`_ Incorrect classification of a datetime
+
+
+2.5.0-a1 (2017-05-30)
+=====================
+
+
+Compatibility
+-------------
+
+* Dropped support for Python 2.6 and 3.3. openpyxl will not run with Python 2.6
+
+
+Major Changes
+-------------
+
+* Read/write support for pivot tables
+
+
+Deprecations
+------------
+
+* Dropped the anchor method from images and additional constructor arguments
+
+
+Bugfixes
+--------
+* `#779 <https://bitbucket.org/openpyxl/openpyxl/issues/779>`_ Fails to recognise Chinese date format`
+* `#828 <https://bitbucket.org/openpyxl/openpyxl/issues/828>`_ Include hidden cells in charts`
+
+
+Pull requests
+-------------
+* `163 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/163>`_ Improved GradientFill
+
+
+Minor changes
+-------------
+
+* Remove deprecated methods from Cell
+* Remove deprecated methods from Worksheet
+* Added read/write support for the datetime type for cells
+
+
 2.4.9 (unreleased)
 ==================
 

@@ -134,6 +134,7 @@ class Worksheet(_WorkbookChild):
         self._comments = []
         self._merged_cells = []
         self._tables = []
+        self._pivots = []
         self.data_validations = DataValidationList()
         self._hyperlinks = []
         self.sheet_state = 'visible'
@@ -662,6 +663,7 @@ class Worksheet(_WorkbookChild):
         """
         self.data_validations.append(data_validation)
 
+
     def add_chart(self, chart, anchor=None):
         """
         Add a chart to the sheet
@@ -671,19 +673,23 @@ class Worksheet(_WorkbookChild):
             chart.anchor = anchor
         self._charts.append(chart)
 
+
     def add_image(self, img, anchor=None):
         """
         Add an image to the sheet.
         Optionally provide a cell for the top-left anchor
         """
         if anchor is not None:
-            cell = self[anchor]
-            img.anchor(cell, anchortype="oneCell")
+            img.anchor = anchor
         self._images.append(img)
 
 
     def add_table(self, table):
         self._tables.append(table)
+
+
+    def add_pivot(self, pivot):
+        self._pivots.append(pivot)
 
 
     def merge_cells(self, range_string=None, start_row=None, start_column=None, end_row=None, end_column=None):
@@ -807,47 +813,6 @@ class Worksheet(_WorkbookChild):
         raise TypeError('Value must be a list, tuple, range or generator, or a dict. Supplied value is {0}'.format(
             type(iterable))
                         )
-
-
-    @deprecated("Charts and images should be positioned using anchor objects")
-    def point_pos(self, left=0, top=0):
-        """ tells which cell is under the given coordinates (in pixels)
-        counting from the top-left corner of the sheet.
-        Can be used to locate images and charts on the worksheet """
-
-        if left < 0 or top < 0:
-            raise ValueError("Coordinates must be positive")
-
-        current_col = 1
-        current_row = 1
-        column_dimensions = self.column_dimensions
-        row_dimensions = self.row_dimensions
-        default_width = points_to_pixels(DEFAULT_COLUMN_WIDTH)
-        default_height = points_to_pixels(DEFAULT_ROW_HEIGHT)
-        left_pos = 0
-        top_pos = 0
-
-        while left_pos <= left:
-            letter = get_column_letter(current_col)
-            current_col += 1
-            if letter in column_dimensions:
-                cdw = column_dimensions[letter].width
-                if cdw is not None:
-                    left_pos += points_to_pixels(cdw)
-                    continue
-            left_pos += default_width
-
-        while top_pos <= top:
-            row = current_row
-            current_row += 1
-            if row in row_dimensions:
-                rdh = row_dimensions[row].height
-                if rdh is not None:
-                    top_pos += points_to_pixels(rdh)
-                    continue
-            top_pos += default_height
-
-        return (letter, row)
 
 
     def _add_column(self):

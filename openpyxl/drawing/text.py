@@ -164,10 +164,10 @@ class CharacterProperties(Serialisable):
     uFillTx = EmptyTag()
     uFill = EmptyTag()
 
-    __elements__ = ('ln', 'highlight', 'latin', 'ea', 'cs', 'sym',
-                    'hlinkClick', 'hlinkMouseOver', 'rtl', 'noFill', 'solidFill', 'gradFill',
-                    'blipFill', 'pattFill', 'grpFill', 'effectLst', 'effectDag', 'uLnTx',
-                    'uLn', 'uFillTx', 'uFill')
+    __elements__ = ('ln', 'noFill', 'solidFill', 'gradFill', 'blipFill',
+                    'pattFill', 'grpFill', 'effectLst', 'effectDag', 'highlight','uLnTx',
+                    'uLn', 'uFillTx', 'uFill', 'latin', 'ea', 'cs', 'sym', 'hlinkClick',
+                    'hlinkMouseOver', 'rtl', )
 
     def __init__(self,
                  kumimoji=None,
@@ -279,8 +279,8 @@ class TabStopList(Serialisable):
 
 class Spacing(Serialisable):
 
-    spcPct = NestedInteger()
-    spcPts = NestedInteger()
+    spcPct = NestedInteger(allow_none=True)
+    spcPts = NestedInteger(allow_none=True)
 
     __elements__ = ('spcPct', 'spcPts')
 
@@ -471,14 +471,14 @@ class RegularTextRun(Serialisable):
 
     rPr = Typed(expected_type=CharacterProperties, allow_none=True)
     properties = Alias("rPr")
-    t = NestedText(expected_type=unicode, allow_none=True)
+    t = NestedText(expected_type=unicode)
     value = Alias("t")
 
     __elements__ = ('rPr', 't')
 
     def __init__(self,
                  rPr=None,
-                 t=None,
+                 t="",
                 ):
         self.rPr = rPr
         self.t = t
@@ -534,7 +534,7 @@ class Paragraph(Serialisable):
     br = Typed(expected_type=LineBreak, allow_none=True)
     fld = Typed(expected_type=TextField, allow_none=True)
 
-    __elements__ = ('pPr', 'endParaRPr', 'r', 'br', 'fld')
+    __elements__ = ('pPr', 'r', 'br', 'fld', 'endParaRPr')
 
     def __init__(self,
                  pPr=None,
