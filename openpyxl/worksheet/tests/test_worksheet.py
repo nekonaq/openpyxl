@@ -12,7 +12,6 @@ from openpyxl.utils import coordinate_from_string
 from openpyxl.comments import Comment
 from openpyxl.utils.exceptions import (
     SheetTitleException,
-    InsufficientCoordinatesException,
     NamedRangeException
     )
 
@@ -153,7 +152,7 @@ class TestWorksheet:
 
     def test_cell_insufficient_coordinates(self, Worksheet):
         ws = Worksheet(Workbook())
-        with pytest.raises(InsufficientCoordinatesException):
+        with pytest.raises(TypeError):
             ws.cell(row=8)
 
     def test_cell_range_name(self):
@@ -400,7 +399,7 @@ class TestWorksheet:
 
     def test_merged_cells_lookup(self, Worksheet):
         ws = Worksheet(Workbook())
-        ws._merged_cells.append("A1:N50")
+        ws.merge_cells("A1:N50")
         merged = ws.merged_cells
         assert 'A1' in merged
         assert 'N50' in merged
@@ -419,7 +418,7 @@ class TestWorksheet:
         ws['D4'] = 16
         assert (4, 4) in ws._cells
         ws.merge_cells(range_string="A1:D4")
-        assert ws._merged_cells == ["A1:D4"]
+        assert ws.merged_cells == "A1:D4"
         assert (4, 4) not in ws._cells
         assert (1, 1) in ws._cells
 
@@ -427,19 +426,33 @@ class TestWorksheet:
     def test_merge_coordinate(self, Worksheet):
         ws = Worksheet(Workbook())
         ws.merge_cells(start_row=1, start_column=1, end_row=4, end_column=4)
-        assert ws._merged_cells == ["A1:D4"]
+        assert ws.merged_cells == "A1:D4"
+    
+
+    def test_merge_more_columns_than_rows(self, Worksheet):
+        ws = Worksheet(Workbook())
+        ws.merge_cells(start_row=1, start_column=1, end_row=2, end_column=4)
+        assert ws.merged_cells == "A1:D2"
+
+
+    def test_merge_more_rows_than_columns(self, Worksheet):
+        ws = Worksheet(Workbook())
+        ws.merge_cells(start_row=1, start_column=1, end_row=4, end_column=2)
+        assert ws.merged_cells == "A1:B4"
 
 
     def test_unmerge_range_string(self, Worksheet):
         ws = Worksheet(Workbook())
-        ws._merged_cells = ["A1:D4"]
+        ws.merge_cells("A1:D4")
         ws.unmerge_cells("A1:D4")
+        assert ws.merged_cells == ""
 
 
     def test_unmerge_coordinate(self, Worksheet):
         ws = Worksheet(Workbook())
-        ws._merged_cells = ["A1:D4"]
+        ws.merge_cells("A1:D4")
         ws.unmerge_cells(start_row=1, start_column=1, end_row=4, end_column=4)
+        assert ws.merged_cells == ""
 
 
     @pytest.mark.parametrize("value, result, rows_cols",
@@ -480,27 +493,6 @@ class TestWorksheet:
         ws = wb.active
         ws.print_area = cell_range
         assert ws.print_area == result
-
-
-class TestPositioning(object):
-    def test_point(self):
-        wb = Workbook()
-        ws = wb.active
-        assert ws.point_pos(top=40, left=150), ('C' == 3)
-
-
-    @pytest.mark.parametrize("value", ('A1', 'D52', 'X11'))
-    def test_roundtrip(self, value):
-        wb = Workbook()
-        ws = wb.active
-        assert ws.point_pos(*ws.cell(value).anchor) == coordinate_from_string(value)
-
-
-    def test_point_negative(self):
-        wb = Workbook()
-        ws = wb.active
-        with pytest.raises(ValueError):
-            assert ws.point_pos(top=-1, left=-1)
 
 
 def test_freeze_panes_horiz(Worksheet):
@@ -564,3 +556,21 @@ def test_max_row(Worksheet):
     ws.append([])
     ws.append([4])
     assert ws.max_row == 4
+
+
+def test_add_chart(Worksheet):
+    from openpyxl.chart import BarChart
+    ws = Worksheet(DummyWorkbook())
+    chart = BarChart()
+    ws.add_chart(chart, "A1")
+    assert chart.anchor == "A1"
+
+
+@pytest.mark.pil_required
+def test_add_image(Worksheet):
+    from openpyxl.drawing.image import Image
+    from PIL.Image import Image as PILImage
+
+    ws = Worksheet(DummyWorkbook())
+    im = Image(PILImage())
+    ws.add_image(im, "D5")
