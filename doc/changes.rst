@@ -1,23 +1,51 @@
-2.4.9 (unreleased)
+2.4.10 (unreleased)
+===================
+
+Bugfixes
+--------
+
+* #912 `<https://bitbucket.org/openpyxl/openpyxl/issues/912>`_ Copying objects uses shallow copy
+* #921 `<https://bitbucket.org/openpyxl/openpyxl/issues/921>`_ API documentation not generated automatically
+* #927 `<https://bitbucket.org/openpyxl/openpyxl/issues/927>`_ Exception raised when adding coloured borders together
+* #931 `<https://bitbucket.org/openpyxl/openpyxl/issues/931>`_ Number formats not correctly deduplicated
+
+
+Pull requests
+-------------
+
+* 203 `<https://bitbucket.org/openpyxl/openpyxl/pull-requests/203/>`_ Correction to worksheet protection description
+* 210 `<https://bitbucket.org/openpyxl/openpyxl/pull-requests/210/>`_ Some improvements to the API docs
+* 211 `<https://bitbucket.org/openpyxl/openpyxl/pull-requests/211/>`_ Improved deprecation decorator
+* 218 `<https://bitbucket.org/openpyxl/openpyxl/pull-requests/218/>`_ Fix problems with deepcopy
+
+
+2.4.9 (2017-10-19)
 ==================
 
 
 Bugfixes
 --------
+
 * `#809 <https://bitbucket.org/openpyxl/openpyxl/issues/809>`_ Incomplete documentation of `copy_worksheet` method
 * `#811 <https://bitbucket.org/openpyxl/openpyxl/issues/811>`_ Scoped definedNames not removed when worksheet is deleted
 * `#824 <https://bitbucket.org/openpyxl/openpyxl/issues/824>`_ Raise an exception if a chart is used in multiple sheets
+* `#842 <https://bitbucket.org/openpyxl/openpyxl/issues/842>`_ Non-ASCII table column headings cause an exception in Python 2
 * `#846 <https://bitbucket.org/openpyxl/openpyxl/issues/846>`_ Conditional formats not supported in write-only mode
 * `#849 <https://bitbucket.org/openpyxl/openpyxl/issues/849>`_ Conditional formats with no sqref cause an exception
 * `#859 <https://bitbucket.org/openpyxl/openpyxl/issues/859>`_ Headers that start with a number conflict with font size
+* `#902 <https://bitbucket.org/openpyxl/openpyxl/issues/902>`_ TableStyleElements don't always have a condtional format
+* `#908 <https://bitbucket.org/openpyxl/openpyxl/issues/908>`_ Read-only mode sometimes returns too many cells
+
 
 
 Pull requests
 -------------
+
 * `#179 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/179>`_ Cells kept in a set
 * `#180 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/180>`_ Support for Workbook protection
 * `#182 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/182>`_ Read support for page breaks
 * `#183 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/183>`_ Improve documentation of `copy_worksheet` method
+* `#198 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/198>`_ Fix for #908
 
 
 2.4.8 (2017-05-30)
@@ -26,6 +54,7 @@ Pull requests
 
 Bugfixes
 --------
+
 * AutoFilter.sortState being assignd to the ws.sortState
 * `#766 <https://bitbucket.org/openpyxl/openpyxl/issues/666>`_ Sheetnames with apostrophes need additional escaping
 * `#729 <https://bitbucket.org/openpyxl/openpyxl/issues/729>`_ Cannot open files created by Microsoft Dynamics
