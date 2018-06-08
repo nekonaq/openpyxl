@@ -68,7 +68,7 @@ from .views import (
     Selection,
     SheetViewList,
 )
-from .cell_range import MultiCellRange, CellRange
+from .cell_range import MultiCellRange, CellRange, MergedCellRange
 from .properties import WorksheetProperties
 from .pagebreak import PageBreak
 
@@ -159,6 +159,7 @@ class Worksheet(_WorkbookChild):
         self.legacy_drawing = None
         self.sheet_properties = WorksheetProperties()
         self.sheet_format = SheetFormatProperties()
+        self.merged_cell_range = {}
 
 
     @property
@@ -712,9 +713,16 @@ class Worksheet(_WorkbookChild):
     def _clean_merge_range(self, cr):
         """
         Remove all but the top left-cell from a range of merged cells
+        and creates a MergedCellRange object to recreate the lost border
+        information.
+        After deletion of cells a reformat is issued.
         """
 
         min_col, min_row, max_col, max_row = cr.bounds
+
+        mcr = MergedCellRange(self, cr.coord)
+        self.merged_cell_range.update({cr.bounds:mcr})
+
         rows = range(min_row, max_row+1)
         cols = range(min_col, max_col+1)
         cells = product(rows, cols)
@@ -722,6 +730,8 @@ class Worksheet(_WorkbookChild):
         for c in islice(cells, 1, None):
             if c in self._cells:
                 del self._cells[c]
+
+        mcr.format()
 
 
     @property
@@ -740,6 +750,26 @@ class Worksheet(_WorkbookChild):
             raise ValueError("Cell range {0} is not merged".format(cr.coord))
 
         self.merged_cells.remove(cr)
+
+        self._clean_merge_cell_range(cr.bounds)
+
+
+    def _clean_merge_cell_range(self, bounds):
+        """
+        Remove all MergedCells from the MergedCellRange and deletes the
+        MergedCellRange.
+        """
+        min_col, min_row, max_col, max_row = bounds
+
+        rows = range(min_row, max_row+1)
+        cols = range(min_col, max_col+1)
+        cells = product(rows, cols)
+
+        for c in islice(cells, 1, None):
+            if c in self._cells:
+                del self._cells[c]
+
+        del self.merged_cell_range[bounds]
 
 
     def append(self, iterable):

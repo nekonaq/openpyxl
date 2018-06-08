@@ -7,6 +7,8 @@ from openpyxl.compat.strings import safe_repr
 from openpyxl.descriptors import Strict
 from openpyxl.descriptors import MinMax, Sequence
 from openpyxl.descriptors.serialisable import Serialisable
+from openpyxl.styles.borders import Border
+from openpyxl.cell.cell import Cell, MergedCell
 
 from openpyxl.utils import (
     range_boundaries,
@@ -369,6 +371,33 @@ class CellRange(Serialisable):
         rows = self.max_row + 1 - self.min_row
         return {'columns':cols, 'rows':rows}
 
+    @property
+    def top(self):
+        top = []
+        for col in range(self.min_col, self.max_col+1):
+            top.append((self.min_row, col))
+        return top
+
+    @property
+    def bottom(self):
+        bottom = []
+        for col in range(self.min_col, self.max_col+1):
+            bottom.append((self.max_row, col))
+        return bottom
+
+    @property
+    def left(self):
+        left = []
+        for row in range(self.min_row, self.max_row+1):
+            left.append((row, self.min_col))
+        return left
+
+    @property
+    def right(self):
+        right = []
+        for row in range(self.min_row, self.max_row+1):
+            right.append((row, self.max_col))
+        return right
 
 class MultiCellRange(Strict):
 
@@ -455,3 +484,83 @@ class MultiCellRange(Strict):
         for r in self.ranges:
             n.ranges.append(copy(r))
         return n
+
+
+class MergedCellRange(CellRange):
+
+    """
+    MergedCellRange stores the border information of a merged cell in the top
+    left cell of the merged cell.
+    The remaining cells in the merged cell are stored as MergedCell objects and
+    get their border information from the upper left cell.
+    """
+
+    def __init__(self, worksheet, coord):
+        self.ws = worksheet
+        super(MergedCellRange, self).__init__(range_string=coord)
+        self.start_cell = None
+        self.get_borders()
+
+    def __repr__(self):
+        fmt = u"<{cls} {coord}>"
+        if self.title:
+            fmt = u"<{cls} {title!r}!{coord}>"
+        return safe_repr(fmt.format(cls=self.__class__.__name__,
+                                    title=self.title, coord=self.coord))
+
+
+    def get_borders(self):
+        """
+        If the upper left cell of the merged cell does not yet exist, it is
+        created.
+        The upper left cell gets the border information of the bottom and right
+        border from the bottom right cell of the merged cell, if available.
+        """
+
+        # Top-left cell.
+        if (self.min_row, self.min_col) in self.ws._cells:
+            self.start_cell = self.ws._cells[(self.min_row, self.min_col)]
+        else:
+            self.start_cell = Cell(self.ws, row=self.min_row,
+                    col_idx=self.min_col)
+            self.ws._cells[(self.start_cell.row,
+                self.start_cell.col_idx)] = self.start_cell
+
+        if (self.max_row, self.max_col) in self.ws._cells:
+            # Bottom-right cell
+            end_cell = self.ws._cells[(self.max_row, self.max_col)]
+
+            self.start_cell.border = self.start_cell.border + Border(
+                right=end_cell.border.right, bottom=end_cell.border.bottom)
+
+
+    def format(self):
+
+        """
+        Each cell of the merged cell is created as MergedCell if it does not
+        already exist.
+
+        The MergedCells at the edge of the merged cell gets its borders from
+        the upper left cell.
+
+         - The top MergedCells get the top border from the top left cell.
+         - The bottom MergedCells get the bottom border from the top left cell.
+         - The left MergedCells get the left border from the top left cell.
+         - The right MergedCells get the right border from the top left cell.
+        """
+
+        border_options= (
+                (self.top, Border(top=self.start_cell.border.top)),
+                (self.bottom, Border(bottom=self.start_cell.border.bottom)),
+                (self.left, Border(left=self.start_cell.border.left)),
+                (self.right, Border(right=self.start_cell.border.right)),
+                )
+
+        for edge in border_options:
+            for coord in edge[0]:
+                cell = self.ws._cells.get(coord)
+                if cell == None:
+                    row, col = coord
+                    cell = MergedCell(self.ws, row=row, col_idx=col)
+                    self.ws._cells[(cell.row, cell.col_idx)] = cell
+                cell.border += edge[1]

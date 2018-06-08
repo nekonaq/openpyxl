@@ -104,6 +104,10 @@ def write_worksheet(worksheet):
             if cols is not None:
                 xf.write(cols)
 
+            # The borders of all merged cells are formatted.
+            for mcr in ws.merged_cell_range.itervalues():
+                mcr.format()
+
             # write data
             write_rows(xf, ws)
 

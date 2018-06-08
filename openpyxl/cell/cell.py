@@ -16,6 +16,8 @@ from copy import copy
 import datetime
 import re
 
+from itertools import islice, product
+
 from openpyxl.compat import (
     unicode,
     basestring,
@@ -376,6 +378,51 @@ class Cell(StyleableObject):
         elif value is None and self._comment:
             self._comment.unbind()
         self._comment = value
+
+
+class MergedCell(StyleableObject):
+
+    """
+    Describes the properties of a cell in a merged cell and helps to
+    display the borders of the merged cell.
+
+    The value of a MergedCell is always None.
+    """
+
+    __slots__ = (
+        'row',
+        'col_idx',
+        )
+
+    def __init__(self, worksheet, row=None, col_idx=None):
+        super(MergedCell, self).__init__(worksheet)
+        self.row = row
+        self.col_idx = col_idx
+
+    def __repr__(self):
+        return "<MergedCell {0!r}.{1}>".format(self.parent.title, self.coordinate)
+
+    @property
+    def _value(self):
+        return None
+
+    @property
+    def data_type(self):
+        return 'n'
+
+    @property
+    def _comment(self):
+        return None
+
+    @property
+    def coordinate(self):
+        """This merged cell's coordinate. (ex. 'A5')"""
+        return '%s%d' % (self.column, self.row)
+
+    @property
+    def column(self):
+        """The letter of this merged cell's column. (ex. 'A')"""
+        return get_column_letter(self.col_idx)
 
 
 def WriteOnlyCell(ws=None, value=None):
