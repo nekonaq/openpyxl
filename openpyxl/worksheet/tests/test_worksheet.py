@@ -7,7 +7,7 @@ from itertools import islice
 
 # package imports
 from openpyxl.workbook import Workbook
-from openpyxl.cell import Cell
+from openpyxl.cell import Cell, MergedCell
 from openpyxl.utils.exceptions import NamedRangeException
 
 
