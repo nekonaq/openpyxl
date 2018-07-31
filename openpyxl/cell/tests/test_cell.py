@@ -44,7 +44,7 @@ def DummyWorksheet():
         _comment_count = 0
 
         def cell(self, column, row):
-            return Cell(self, row=row, col_idx=column)
+            return Cell(self, row=row, column=column)
 
     return Ws()
 
@@ -58,7 +58,7 @@ def Cell():
 @pytest.fixture
 def dummy_cell(DummyWorksheet, Cell):
     ws = DummyWorksheet
-    cell = Cell(ws, column="A", row=1)
+    cell = Cell(ws, column=1, row=1)
     return cell
 
 
@@ -114,10 +114,11 @@ def test_infer_datetime(dummy_cell, value, expected):
 def test_ctor(dummy_cell):
     cell = dummy_cell
     assert cell.data_type == 'n'
-    assert cell.column == 'A'
+    assert cell.column == 1
     assert cell.row == 1
     assert cell.coordinate == "A1"
     assert cell.value is None
+
     assert cell.comment is None
 
 
@@ -341,7 +342,7 @@ def test_font(DummyWorksheet, Cell):
     ws = DummyWorksheet
     ws.parent._fonts.add(font)
 
-    cell = Cell(ws, column='A', row=1)
+    cell = Cell(ws, row=1, column=1)
     assert cell.font == font
 
 
@@ -418,3 +419,40 @@ def test_remove_hyperlink(dummy_cell):
     cell.hyperlink = "http://test.com"
     cell.hyperlink = None
     assert cell.hyperlink is None
+
+
+@pytest.fixture
+def MergedCell():
+    from ..cell import MergedCell
+    return MergedCell(DummyWorksheet())
+
+
+class TestMergedCell:
+
+    def test_value(self, MergedCell):
+        cell = MergedCell
+        assert cell._value is None
+
+
+    def test_data_type(self, MergedCell):
+        cell = MergedCell
+        assert cell.data_type == 'n'
+
+
+    def test_comment(self, MergedCell):
+        cell = MergedCell
+        assert cell._comment is None
+
+
+    def test_coordinate(self, MergedCell):
+        cell = MergedCell
+        cell.row = 1
+        cell.column = 1
+        assert cell.coordinate == "A1"
+
+
+    def test_repr(self, MergedCell):
+        cell = MergedCell
+        cell.row = 1
+        cell.column = 1
+        assert repr(cell) == "<MergedCell 'Dummy Worksheet'.A1>"
