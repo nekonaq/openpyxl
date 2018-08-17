@@ -16,11 +16,10 @@ from .worksheet import Worksheet
 from .related import Related
 
 from openpyxl.utils.exceptions import WorkbookAlreadySaved
-
-from openpyxl.writer.etree_worksheet import write_cell
-from openpyxl.writer.worksheet import write_drawing, write_conditional_formatting
 from openpyxl.xml.constants import SHEET_MAIN_NS
 from openpyxl.xml.functions import xmlfile
+
+from .writer import WorksheetWriter
 
 ALL_TEMP_FILES = []
 
@@ -50,7 +49,8 @@ class WriteOnlyWorksheet(_WorkbookChild):
     """
 
     __saved = False
-    writer = None
+    _writer = None
+    _rows = None
     _rel_type = Worksheet._rel_type
     _path = Worksheet._path
     mime_type = Worksheet.mime_type
@@ -121,104 +121,53 @@ class WriteOnlyWorksheet(_WorkbookChild):
         return self._fileobj_name
 
 
-    def _write_header(self):
+    def _write_rows(self):
         """
         Generator that creates the XML file and the sheet header
         """
+        try:
+            xf = self._writer.xf.send(True)
+        except StopIteration:
+            self._already_saved()
 
-        with xmlfile(self.filename) as xf:
-            with xf.element("worksheet", xmlns=SHEET_MAIN_NS):
+        with xf.element("sheetData"):
+            cell = WriteOnlyCell(self)
+            try:
+                while True:
+                    row = (yield)
+                    self._writer.write_row(xf, row, self._max_row)
+            except GeneratorExit:
+                pass
 
-                if self.sheet_properties:
-                    pr = self.sheet_properties.to_tree()
+        self._writer.xf.send(None)
 
-                xf.write(pr)
-                xf.write(self.views.to_tree())
 
-                cols = self.column_dimensions.to_tree()
+    def _get_writer(self):
+        if self._writer is None:
+            self._writer = WorksheetWriter(self, self.filename)
+            self._writer.write_top()
 
-                self.sheet_format.outlineLevelCol = self.column_dimensions.max_outline
-                xf.write(self.sheet_format.to_tree())
-
-                if cols is not None:
-                    xf.write(cols)
-
-                with xf.element("sheetData"):
-                    cell = WriteOnlyCell(self)
-                    try:
-                        while True:
-                            row = (yield)
-                            row_idx = self._max_row
-                            attrs = {'r': '%d' % row_idx}
-                            if row_idx in self.row_dimensions:
-                                dim = self.row_dimensions[row_idx]
-                                attrs.update(dict(dim))
-
-                            with xf.element("row", attrs):
-
-                                for col_idx, value in enumerate(row, 1):
-                                    if value is None:
-                                        continue
-                                    try:
-                                        cell.value = value
-                                    except ValueError:
-                                        if isinstance(value, Cell):
-                                            cell = value
-                                        else:
-                                            raise ValueError
-
-                                    cell.col_idx = col_idx
-                                    cell.row = row_idx
-
-                                    styled = cell.has_style
-                                    write_cell(xf, self, cell, styled)
-
-                                    if styled: # styled cell or datetime
-                                        cell = WriteOnlyCell(self)
-
-                    except GeneratorExit:
-                        pass
-
-                if self.protection.sheet:
-                    xf.write(self.protection.to_tree())
-
-                if self.auto_filter.ref:
-                    xf.write(self.auto_filter.to_tree())
-
-                if self.sort_state.ref:
-                    xf.write(self.sort_state.to_tree())
-
-                if self.conditional_formatting:
-                    cfs = write_conditional_formatting(self)
-                    for cf in cfs:
-                        xf.write(cf)
-
-                if self.data_validations.count:
-                    xf.write(self.data_validations.to_tree())
-
-                if bool(self.HeaderFooter):
-                    xf.write(self.HeaderFooter.to_tree())
-
-                drawing = write_drawing(self)
-                if drawing is not None:
-                    xf.write(drawing)
-
-                if self._comments:
-                    legacyDrawing = Related(id="anysvml")
-                    xml = legacyDrawing.to_tree("legacyDrawing")
-                    xf.write(xml)
 
     def close(self):
         if self.__saved:
             self._already_saved()
-        if self.writer is None:
-            self.writer = self._write_header()
-            next(self.writer)
-        self.writer.close()
+
+        self._get_writer()
+
+        if self._rows is None:
+            self._writer.write_rows()
+        if self._rows:
+            self._rows.close()
+
+        self._writer.write_tail()
+
+        self._writer.xf.close()
         self.__saved = True
+
 
     def _cleanup(self):
         os.remove(self.filename)
+
 
     def append(self, row):
         """
@@ -231,16 +180,45 @@ class WriteOnlyWorksheet(_WorkbookChild):
             ):
             self._invalid_row(row)
 
+        self._get_writer()
+
+        if self._rows is None:
+            self._rows = self._write_rows()
+            next(self._rows)
+
+        row = self._values_to_row(row)
         self._max_row += 1
-
-        if self.writer is None:
-            self.writer = self._write_header()
-            next(self.writer)
-
         try:
-            self.writer.send(row)
+            self._rows.send(row)
         except StopIteration:
             self._already_saved()
+
+
+    def _values_to_row(self, values):
+        """
+        Convert whatever has been appended into a form suitable for work_rows
+        """
+        row_idx = self._max_row
+        cell = WriteOnlyCell(self)
+
+        for col_idx, value in enumerate(values, 1):
+            if value is None:
+                continue
+            try:
+                cell.value = value
+            except ValueError:
+                if isinstance(value, Cell):
+                    cell = value
+                else:
+                    raise ValueError
+
+            cell.column = col_idx
+            cell.row = row_idx
+
+            yield cell
+            # reset cell if style applied
+            if cell.has_style:
+                cell = WriteOnlyCell(self)
 
 
     def _already_saved(self):
