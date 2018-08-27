@@ -4,11 +4,12 @@ from __future__ import absolute_import
 """Write a .xlsx file."""
 
 # Python stdlib imports
-from io import BytesIO
 import re
+from tempfile import TemporaryFile
 from zipfile import ZipFile, ZIP_DEFLATED
 
 # package imports
+from openpyxl.compat import deprecated
 from openpyxl.utils.exceptions import InvalidFileException
 from openpyxl.xml.constants import (
     ARC_SHARED_STRINGS,
@@ -37,13 +38,8 @@ from openpyxl.packaging.relationship import (
 from openpyxl.packaging.extended import ExtendedProperties
 
 from openpyxl.writer.strings import write_string_table
-from openpyxl.writer.workbook import (
-    write_root_rels,
-    write_workbook_rels,
-    write_workbook,
-)
+from openpyxl.writer.workbook import WorkbookWriter
 from openpyxl.writer.theme import write_theme
-from openpyxl.writer.worksheet import write_worksheet
 from openpyxl.styles.stylesheet import write_stylesheet
 
 from openpyxl.comments.comment_sheet import CommentSheet
@@ -70,7 +66,6 @@ class ExcelWriter(object):
         # cleanup all worksheets
         archive = self._archive
 
-        archive.writestr(ARC_ROOT_RELS, write_root_rels(self.workbook))
         props = ExtendedProperties()
         archive.writestr(ARC_APP, tostring(props.to_tree()))
 
@@ -92,8 +87,10 @@ class ExcelWriter(object):
         stylesheet = write_stylesheet(self.workbook)
         archive.writestr(ARC_STYLE, tostring(stylesheet))
 
-        archive.writestr(ARC_WORKBOOK, write_workbook(self.workbook))
-        archive.writestr(ARC_WORKBOOK_RELS, write_workbook_rels(self.workbook))
+        writer = WorkbookWriter(self.workbook)
+        archive.writestr(ARC_ROOT_RELS, writer.write_root_rels())
+        archive.writestr(ARC_WORKBOOK, writer.write())
+        archive.writestr(ARC_WORKBOOK_RELS, writer.write_rels())
 
         self._merge_vba()
 
@@ -261,13 +258,13 @@ class ExcelWriter(object):
             self.manifest.append(link)
 
 
-    def save(self, filename):
+    def save(self):
         """Write data into the archive."""
         self.write_data()
         self._archive.close()
 
 
-def save_workbook(workbook, filename,):
+def save_workbook(workbook, filename):
     """Save the given workbook on the filesystem under the name filename.
 
     :param workbook: the workbook to save
@@ -281,34 +278,21 @@ def save_workbook(workbook, filename,):
     """
     archive = ZipFile(filename, 'w', ZIP_DEFLATED, allowZip64=True)
     writer = ExcelWriter(workbook, archive)
-    writer.save(filename)
+    writer.save()
     return True
 
 
-def save_virtual_workbook(workbook,):
+@deprecated("Use a NamedTemporaryFile")
+def save_virtual_workbook(workbook):
     """Return an in-memory workbook, suitable for a Django response."""
-    temp_buffer = BytesIO()
-    archive = ZipFile(temp_buffer, 'w', ZIP_DEFLATED, allowZip64=True)
+    tmp = TemporaryFile()
+    archive = ZipFile(tmp, 'w', ZIP_DEFLATED, allowZip64=True)
 
     writer = ExcelWriter(workbook, archive)
+    writer.save()
 
-    try:
-        writer.write_data()
-    finally:
-        archive.close()
+    tmp.seek(0)
+    virtual_workbook = tmp.read()
+    tmp.close()
 
-    virtual_workbook = temp_buffer.getvalue()
-    temp_buffer.close()
     return virtual_workbook
-
-
-def save_dump(workbook, filename):
-    """
-    Save a write-only workbook
-    """
-    archive = ZipFile(filename, 'w', ZIP_DEFLATED, allowZip64=True)
-    if workbook.worksheets == []:
-        workbook.create_sheet()
-    writer = ExcelWriter(workbook, archive)
-    writer.save(filename)
-    return True

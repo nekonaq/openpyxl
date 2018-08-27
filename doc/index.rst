@@ -87,7 +87,7 @@ There are several ways to contribute, even if you can't code (or can't code well
       documentation, it's pretty hard to do anything with it
 
     * proposing compatibility fixes for different versions of Python: we support
-      2.7 to 3.5, so if it does not work on your environment, let us know :-)
+      2.7, 3.4, 3.5, 3.6 and 3.7
 
 
 Installation
@@ -138,6 +138,7 @@ Tutorial
 
     tutorial
 
+
 Cookbook
 ++++++++
 
@@ -150,7 +151,6 @@ Performance
 -----------
 
 .. toctree::
-    :maxdepth: 1
 
     performance
 
