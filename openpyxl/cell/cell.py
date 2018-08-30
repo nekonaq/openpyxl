@@ -16,6 +16,8 @@ from copy import copy
 import datetime
 import re
 
+from itertools import islice, product
+
 from openpyxl.compat import (
     unicode,
     basestring,
@@ -48,8 +50,19 @@ from openpyxl.worksheet.hyperlink import Hyperlink
 
 # constants
 
-
 TIME_TYPES = (datetime.datetime, datetime.date, datetime.time, datetime.timedelta)
+TIME_FORMATS = {
+    datetime.datetime:numbers.FORMAT_DATE_DATETIME,
+    datetime.date:numbers.FORMAT_DATE_YYYYMMDD2,
+    datetime.time:numbers.FORMAT_DATE_TIME6,
+    datetime.timedelta:numbers.FORMAT_DATE_TIMEDELTA,
+                }
+try:
+    from pandas import Timestamp
+    TIME_FORMATS[Timestamp] = numbers.FORMAT_DATE_DATETIME
+except ImportError:
+    pass
+
 STRING_TYPES = (basestring, unicode, bytes)
 KNOWN_TYPES = NUMERIC_TYPES + TIME_TYPES + STRING_TYPES + (bool, type(None))
 
@@ -80,7 +93,7 @@ class Cell(StyleableObject):
     """
     __slots__ = (
         'row',
-        'col_idx',
+        'column',
         '_value',
         'data_type',
         'parent',
@@ -103,10 +116,12 @@ class Cell(StyleableObject):
                    TYPE_NULL, TYPE_INLINE, TYPE_ERROR, TYPE_FORMULA_CACHE_STRING)
 
 
-    def __init__(self, worksheet, column=None, row=None, value=None, col_idx=None, style_array=None):
+    def __init__(self, worksheet, row=None, column=None, value=None, style_array=None):
         super(Cell, self).__init__(worksheet, style_array)
         self.row = row
         """Row number of this cell (1-based)"""
+        self.column = column
+        """Column number of this cell (1-based)"""
         # _value is the stored value, while value is the displayed value
         self._value = None
         self._hyperlink = None
@@ -114,21 +129,25 @@ class Cell(StyleableObject):
         if value is not None:
             self.value = value
         self._comment = None
-        if column is not None:
-            col_idx = column_index_from_string(column)
-        self.col_idx = col_idx
-        """Column number of this cell (1-based)"""
 
 
     @property
     def coordinate(self):
         """This cell's coordinate (ex. 'A5')"""
-        return '%s%d' % (self.column, self.row)
+        col = get_column_letter(self.column)
+        return "{0}{1}".format(col, self.row)
+
 
     @property
-    def column(self):
-        """The letter of this cell's column (ex. 'A')"""
-        return get_column_letter(self.col_idx)
+    def col_idx(self):
+        """The numerical index of the column"""
+        return self.column
+
+
+    @property
+    def column_letter(self):
+        return get_column_letter(self.column)
+
 
     @property
     def encoding(self):
@@ -268,13 +287,7 @@ class Cell(StyleableObject):
 
     def _set_time_format(self, value):
         """Set number format for Python date or time"""
-        fmts = {
-            datetime.datetime:numbers.FORMAT_DATE_DATETIME,
-            datetime.date:numbers.FORMAT_DATE_YYYYMMDD2,
-            datetime.time:numbers.FORMAT_DATE_TIME6,
-            datetime.timedelta:numbers.FORMAT_DATE_TIMEDELTA,
-                }
-        self.number_format = fmts[type(value)]
+        self.number_format = TIME_FORMATS[type(value)]
 
     @property
     def value(self):
@@ -370,5 +383,33 @@ class Cell(StyleableObject):
         self._comment = value
 
 
+class MergedCell(StyleableObject):
+
+    """
+    Describes the properties of a cell in a merged cell and helps to
+    display the borders of the merged cell.
+
+    The value of a MergedCell is always None.
+    """
+
+    __slots__ = ('row', 'column')
+
+    _value = None
+    data_type = "n"
+    _comment = None
+
+
+    def __init__(self, worksheet, row=None, column=None):
+        super(MergedCell, self).__init__(worksheet)
+        self.row = row
+        self.column = column
+
+
+    def __repr__(self):
+        return "<MergedCell {0!r}.{1}>".format(self.parent.title, self.coordinate)
+
+    coordinate = Cell.coordinate
+
+
 def WriteOnlyCell(ws=None, value=None):
-    return Cell(worksheet=ws, column='A', row=1, value=value)
+    return Cell(worksheet=ws, column=1, row=1, value=value)
