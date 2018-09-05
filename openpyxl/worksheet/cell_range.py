@@ -370,6 +370,26 @@ class CellRange(Serialisable):
         return {'columns':cols, 'rows':rows}
 
 
+    @property
+    def _top(self):
+        return [(self.min_row, col) for col in range(self.min_col, self.max_col+1)]
+
+
+    @property
+    def _bottom(self):
+        return [(self.max_row, col) for col in range(self.min_col, self.max_col+1)]
+
+
+    @property
+    def _left(self):
+        return [(row, self.min_col) for row in range(self.min_row, self.max_row+1)]
+
+
+    @property
+    def _right(self):
+        return [(row, self.max_col) for row in range(self.min_row, self.max_row+1)]
+
+
 class MultiCellRange(Strict):
 
 
