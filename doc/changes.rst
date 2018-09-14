@@ -1,8 +1,28 @@
-2.5.8 (unreleased)
-==================
+2.6-a1 (unreleased)
+=====================
 
 
-2.5.7 (2018-09-13)
+Major changes
+-------------
+
+* Implement robust for merged cells so that these can be formatted the way Excel does without confusion. Thanks to Magnus Schieder.
+
+
+Minor changes
+-------------
+
+* Add support for worksheet scenarios
+* Add read support for chartsheets
+* Add method for moving ranges of cells on a worksheet
+
+
+Deprections
+-----------
+
+* Type inference and coercion for cell values
+
+
+2.5.7 (unreleased)
 ==================
 
 
