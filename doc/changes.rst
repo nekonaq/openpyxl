@@ -1,3 +1,10 @@
+2.5.9 (unreleased)
+==================
+
+
+* `#1000 <https://bitbucket.org/openpyxl/openpyxl/issues/1000>`_ Clean AutoFilter name definitions
+
+
 2.5.8 (2018-09-25)
 ==================
 
