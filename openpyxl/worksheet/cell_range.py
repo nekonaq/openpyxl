@@ -138,7 +138,7 @@ class CellRange(Serialisable):
 
     def shift(self, col_shift=0, row_shift=0):
         """
-        Shift the range according to the shift values (*col_shift*, *row_shift*).
+        Shift the focus of the range according to the shift values (*col_shift*, *row_shift*).
 
         :type col_shift: int
         :param col_shift: number of columns to be moved by, can be negative
@@ -368,6 +368,26 @@ class CellRange(Serialisable):
         cols = self.max_col + 1 - self.min_col
         rows = self.max_row + 1 - self.min_row
         return {'columns':cols, 'rows':rows}
+
+
+    @property
+    def _top(self):
+        return [(self.min_row, col) for col in range(self.min_col, self.max_col+1)]
+
+
+    @property
+    def _bottom(self):
+        return [(self.max_row, col) for col in range(self.min_col, self.max_col+1)]
+
+
+    @property
+    def _left(self):
+        return [(row, self.min_col) for row in range(self.min_row, self.max_row+1)]
+
+
+    @property
+    def _right(self):
+        return [(row, self.max_col) for row in range(self.min_row, self.max_row+1)]
 
 
 class MultiCellRange(Strict):
