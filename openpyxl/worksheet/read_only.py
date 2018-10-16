@@ -14,6 +14,8 @@ from openpyxl.compat import (
 from openpyxl.cell.text import Text
 from openpyxl.xml.functions import iterparse, safe_iterator
 from openpyxl.xml.constants import SHEET_MAIN_NS
+from openpyxl.styles import is_date_format
+from openpyxl.styles.numbers import BUILTIN_FORMATS
 
 from openpyxl.worksheet import Worksheet
 from openpyxl.utils import (
@@ -21,8 +23,9 @@ from openpyxl.utils import (
     get_column_letter,
     coordinate_to_tuple,
 )
+from openpyxl.utils.datetime import from_excel
 from openpyxl.worksheet.dimensions import SheetDimension
-from openpyxl.cell.read_only import ReadOnlyCell, EMPTY_CELL
+from openpyxl.cell.read_only import ReadOnlyCell, EMPTY_CELL, _cast_number
 
 
 def read_dimension(source):
@@ -69,6 +72,7 @@ class ReadOnlyWorksheet(object):
         self.shared_strings = shared_strings
         self.base_date = parent_workbook.epoch
         self.xml_source = xml_source
+        self._number_format_cache = {}
         try:
             source = self.xml_source
             dimensions = read_dimension(source)
@@ -102,12 +106,25 @@ class ReadOnlyWorksheet(object):
         self._xml = value
 
 
-    @deprecated("Use ws.iter_rows()")
-    def get_squared_range(self, min_col, min_row, max_col, max_row):
-        return self._cells_by_row(min_col, min_row, max_col, max_row)
+    def _is_date(self, style_id):
+        """
+        Check whether a particular style has a date format
+        """
+        if style_id in self._number_format_cache:
+            return self._number_format_cache[style_id]
+
+        style = self.parent._cell_styles[style_id]
+        key = style.numFmtId
+        if key < 164:
+            fmt = BUILTIN_FORMATS.get(key, "General")
+        else:
+            fmt = self.parent._number_formats[key - 164]
+        is_date = is_date_format(fmt)
+        self._number_format_cache[style_id] = is_date
+        return is_date
 
 
-    def _cells_by_row(self, min_col, min_row, max_col, max_row):
+    def _cells_by_row(self, min_col, min_row, max_col, max_row, values_only=False):
         """
         The source worksheet file may have columns or rows missing.
         Missing cells will be created.
@@ -134,16 +151,16 @@ class ReadOnlyWorksheet(object):
 
                 # return cells from a row
                 if min_row <= row_id:
-                    yield tuple(self._get_row(element, min_col, max_col, row_counter=row_counter))
+                    yield tuple(self._get_row(element, min_col, max_col, row_counter, values_only))
                     row_counter += 1
 
                 element.clear()
 
 
-    def _get_row(self, element, min_col=1, max_col=None, row_counter=None):
+    def _get_row(self, element, min_col=1, max_col=None, row_counter=None, values_only=False):
         """Return cells from a particular row"""
         col_counter = min_col
-        data_only = getattr(self.parent, 'data_only', False)
+        data_only = self.parent.data_only
 
         for cell in safe_iterator(element, CELL_TAG):
             coordinate = cell.get('r')
@@ -165,27 +182,43 @@ class ReadOnlyWorksheet(object):
                 style_id = int(cell.get('s', 0))
                 value = None
 
-                formula = cell.findtext(FORMULA_TAG)
-                if formula is not None and not data_only:
-                    data_type = 'f'
-                    value = "=%s" % formula
+                if not data_only:
+                    formula = cell.findtext(FORMULA_TAG)
+                    if formula is not None:
+                        data_type = 'f'
+                        value = "=%s" % formula
 
-                elif data_type == 'inlineStr':
+                if data_type == 'inlineStr':
                     child = cell.find(INLINE_TAG)
                     if child is not None:
                         richtext = Text.from_tree(child)
                         value = richtext.content
 
-                else:
+                elif data_type != 'f':
                     value = cell.findtext(VALUE_TAG) or None
 
-                yield ReadOnlyCell(self, row, column,
+                if data_type == "n" and value is not None:
+                    value = _cast_number(value)
+                    if style_id and self._is_date(style_id):
+                        value = from_excel(value, self.base_date)
+                elif data_type == "s":
+                    value = self.shared_strings[int(value)]
+                elif data_type == "b":
+                    value = value == "1"
+
+                if values_only:
+                    yield value
+                else:
+                    yield ReadOnlyCell(self, row, column,
                                    value, data_type, style_id)
             col_counter = column + 1
 
         if max_col is not None:
             for _ in range(max(min_col, col_counter), max_col+1):
-                yield EMPTY_CELL
+                if values_only:
+                    yield None
+                else:
+                    yield EMPTY_CELL
 
 
     def _get_cell(self, row, column):
@@ -203,6 +236,12 @@ class ReadOnlyWorksheet(object):
 
     def __iter__(self):
         return self.iter_rows()
+
+
+    @property
+    def values(self):
+        for row in self._cells_by_row(0, 0, None, None, values_only=True):
+            yield row
 
 
     def calculate_dimension(self, force=False):

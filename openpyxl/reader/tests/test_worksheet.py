@@ -15,43 +15,9 @@ from openpyxl.xml.constants import SHEET_MAIN_NS
 from openpyxl.utils.indexed_list import IndexedList
 from openpyxl.worksheet import Worksheet
 from openpyxl.worksheet.pagebreak import Break, PageBreak
+from openpyxl.worksheet.scenario import ScenarioList, Scenario, InputCells
 from openpyxl.packaging.relationship import Relationship, RelationshipList
 from openpyxl.utils.datetime  import CALENDAR_WINDOWS_1900, CALENDAR_MAC_1904
-
-
-def test_get_xml_iter():
-    #1 file object
-    #2 stream (file-like)
-    #3 string
-    #4 zipfile
-    from openpyxl.reader.worksheet import _get_xml_iter
-    from tempfile import TemporaryFile
-
-    FUT = _get_xml_iter
-    s = b""
-    stream = FUT(s)
-    assert isinstance(stream, BytesIO), type(stream)
-
-    u = unicode(s)
-    stream = FUT(u)
-    assert isinstance(stream, BytesIO), type(stream)
-
-    f = TemporaryFile(mode='rb+', prefix='openpyxl.', suffix='.unpack.temp')
-    stream = FUT(f)
-    assert stream == f
-    f.close()
-
-    t = TemporaryFile()
-    z = ZipFile(t, mode="w")
-    z.writestr("test", "whatever")
-    stream = FUT(z.open("test"))
-    assert hasattr(stream, "read")
-
-    try:
-        z.close()
-    except IOError:
-        # you can't just close zipfiles in Windows
-        z.close() # python 2.7
 
 
 @pytest.fixture
@@ -471,11 +437,9 @@ def test_sheet_views(WorkSheetParser, datadir):
     datadir.chdir()
     parser = WorkSheetParser
 
-    with open("frozen_view_worksheet.xml") as src:
-        sheet = src.read()
-
-    parser.source = sheet
-    parser.parse()
+    with open("frozen_view_worksheet.xml", "rb") as src:
+        parser.source = src
+        parser.parse()
     ws = parser.ws
     view = ws.sheet_view
 
@@ -559,9 +523,8 @@ def test_shared_formulae(WorkSheetParser, datadir):
     parser.shared_strings = ["Whatever"] * 7
 
     with open("worksheet_formulae.xml") as src:
-        parser.source = src.read()
-
-    parser.parse()
+        parser.source = src
+        parser.parse()
 
     assert set(ws.formula_attributes) == set(['C10'])
 
@@ -596,7 +559,7 @@ def test_cell_without_coordinates(WorkSheetParser, datadir):
 
 
 def test_external_hyperlinks(WorkSheetParser):
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
       <hyperlink xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
        display="http://test.com" r:id="rId1" ref="A1"/>
@@ -609,7 +572,7 @@ def test_external_hyperlinks(WorkSheetParser):
     rels.append(r)
 
     parser = WorkSheetParser
-    parser.source = src
+    parser.source = BytesIO(src)
     parser.ws._rels = rels
 
     parser.parse()
@@ -618,7 +581,7 @@ def test_external_hyperlinks(WorkSheetParser):
 
 
 def test_local_hyperlinks(WorkSheetParser):
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" >
       <hyperlinks>
         <hyperlink ref="B4:B7" location="'STP nn000TL-10, PKG 2.52'!A1" display="STP 10000TL-10"/>
@@ -626,14 +589,14 @@ def test_local_hyperlinks(WorkSheetParser):
     </sheet>
     """
     parser = WorkSheetParser
-    parser.source = src
+    parser.source = BytesIO(src)
     parser.parse()
 
     assert parser.ws['B4'].hyperlink.location == "'STP nn000TL-10, PKG 2.52'!A1"
 
 
 def test_merge_cells(WorkSheetParser):
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
       <mergeCells>
         <mergeCell ref="C2:F2"/>
@@ -644,7 +607,7 @@ def test_merge_cells(WorkSheetParser):
     """
 
     parser = WorkSheetParser
-    parser.source = src
+    parser.source = BytesIO(src)
 
     parser.parse()
 
@@ -652,7 +615,7 @@ def test_merge_cells(WorkSheetParser):
 
 
 def test_conditonal_formatting(WorkSheetParser):
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
       <conditionalFormatting sqref="S1:S10">
         <cfRule type="top10" dxfId="25" priority="12" percent="1" rank="10"/>
@@ -667,7 +630,7 @@ def test_conditonal_formatting(WorkSheetParser):
     parser = WorkSheetParser
     dxf = DifferentialStyle()
     parser.differential_styles = [dxf] * 30
-    parser.source = src
+    parser.source = BytesIO(src)
 
     parser.parse()
 
@@ -675,7 +638,7 @@ def test_conditonal_formatting(WorkSheetParser):
 
 
 def test_sheet_properties(WorkSheetParser):
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
     <sheetPr codeName="Sheet3">
       <tabColor rgb="FF92D050"/>
@@ -685,7 +648,7 @@ def test_sheet_properties(WorkSheetParser):
     </sheet>
     """
     parser = WorkSheetParser
-    parser.source = src
+    parser.source = BytesIO(src)
     parser.parse()
 
     assert parser.ws.sheet_properties.tabColor.rgb == "FF92D050"
@@ -694,13 +657,13 @@ def test_sheet_properties(WorkSheetParser):
 
 def test_sheet_format(WorkSheetParser):
 
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
       <sheetFormatPr defaultRowHeight="14.25" baseColWidth="15"/>
     </sheet>
     """
     parser = WorkSheetParser
-    parser.source = src
+    parser.source = BytesIO(src)
     parser.parse()
 
     assert parser.ws.sheet_format.defaultRowHeight == 14.25
@@ -708,7 +671,7 @@ def test_sheet_format(WorkSheetParser):
 
 
 def test_tables(WorkSheetParser):
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
       xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
       <tableParts count="1">
@@ -723,14 +686,14 @@ def test_tables(WorkSheetParser):
     rels.append(r)
     parser.ws._rels = rels
 
-    parser.source = src
+    parser.source = BytesIO(src)
     parser.parse()
 
     assert parser.tables == ["../tables/table1.xml"]
 
 
 def test_auto_filter(WorkSheetParser):
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
       <autoFilter ref="A1:AK3237">
         <sortState ref="A2:AM3269">
@@ -741,35 +704,16 @@ def test_auto_filter(WorkSheetParser):
     """
 
     parser = WorkSheetParser
-    parser.source = src
+    parser.source = BytesIO(src)
     parser.parse()
     ws = parser.ws
 
     assert ws.auto_filter.ref == "A1:AK3237"
     assert ws.auto_filter.sortState.ref == "A2:AM3269"
-    assert ws.sort_state.ref is None
-
-
-@pytest.mark.xfail
-def test_sort_state(WorkSheetParser):
-    src = """
-    <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-    <sortState ref="A2:AM3269">
-        <sortCondition ref="B1:B3269"/>
-    </sortState>
-    </sheet>
-    """
-
-    parser = WorkSheetParser
-    parser.source = src
-    parser.parse()
-    ws = parser.ws
-
-    assert ws.sort_state.ref == "A2:AM3269"
 
 
 def test_page_break(WorkSheetParser):
-    src = """
+    src = b"""
     <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
         <rowBreaks count="1" manualBreakCount="1">
             <brk id="15" man="1" max="16383" min="0"/>
@@ -780,8 +724,31 @@ def test_page_break(WorkSheetParser):
     expected_pagebreak.append(Break(id=15))
 
     parser = WorkSheetParser
-    parser.source = src
+    parser.source = BytesIO(src)
     parser.parse()
     ws = parser.ws
 
     assert ws.page_breaks == expected_pagebreak
+
+
+def test_scenarios(WorkSheetParser):
+    src = b"""
+    <sheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    <scenarios current="0" show="0">
+    <scenario name="Worst case" locked="1" user="User" comment="comment">
+      <inputCells r="B2" val="50000" />
+    </scenario>
+    </scenarios>
+    </sheet>
+    """
+
+    c = InputCells(r="B2", val="50000")
+    s = Scenario(name="Worst case", inputCells=[c], locked=True, user="User", comment="comment")
+    scenarios = ScenarioList(scenario=[s], current="0", show="0")
+
+    parser = WorkSheetParser
+    parser.source = BytesIO(src)
+    parser.parse()
+    ws = parser.ws
+
+    assert ws.scenarios == scenarios
