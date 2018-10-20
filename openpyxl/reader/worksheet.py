@@ -26,6 +26,7 @@ from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.worksheet.page import PageMargins, PrintOptions, PrintPageSetup
 from openpyxl.worksheet.pagebreak import PageBreak
 from openpyxl.worksheet.protection import SheetProtection
+from openpyxl.worksheet.scenario import ScenarioList
 from openpyxl.worksheet.views import SheetViewList
 from openpyxl.worksheet.datavalidation import DataValidationList
 from openpyxl.xml.constants import (
@@ -42,34 +43,12 @@ from openpyxl.formatting.formatting import ConditionalFormatting
 from openpyxl.formula.translate import Translator
 from openpyxl.worksheet.properties import WorksheetProperties
 from openpyxl.utils import (
-    coordinate_from_string,
     get_column_letter,
-    column_index_from_string,
     coordinate_to_tuple,
     )
 from openpyxl.utils.datetime import from_excel, from_ISO8601
 from openpyxl.descriptors.excel import ExtensionList, Extension
 from openpyxl.worksheet.table import TablePartList
-
-
-def _get_xml_iter(xml_source):
-    """
-    Possible inputs: strings, bytes, members of zipfile, temporary file
-    Always return a file like object
-    """
-    if not hasattr(xml_source, 'read'):
-        try:
-            xml_source = xml_source.encode("utf-8")
-        except (AttributeError, UnicodeDecodeError):
-            pass
-        return BytesIO(xml_source)
-    else:
-        try:
-            xml_source.seek(0)
-        except:
-            # could be a zipfile
-            pass
-        return xml_source
 
 
 class WorkSheetParser(object):
@@ -85,7 +64,6 @@ class WorkSheetParser(object):
         self.epoch = ws.parent.epoch
         self.source = xml_source
         self.shared_strings = shared_strings
-        self.guess_types = ws.parent.guess_types
         self.data_only = ws.parent.data_only
         self.styles = ws.parent._cell_styles
         self.differential_styles = ws.parent._differential_styles
@@ -119,10 +97,10 @@ class WorkSheetParser(object):
             '{%s}sheetViews' % SHEET_MAIN_NS: ('views', SheetViewList),
             '{%s}sheetFormatPr' % SHEET_MAIN_NS: ('sheet_format', SheetFormatProperties),
             '{%s}rowBreaks' % SHEET_MAIN_NS: ('page_breaks', PageBreak),
+            '{%s}scenarios' % SHEET_MAIN_NS: ('scenarios', ScenarioList),
         }
 
-        stream = _get_xml_iter(self.source)
-        it = iterparse(stream, tag=dispatcher)
+        it = iterparse(self.source, tag=dispatcher)
 
         for _, element in it:
             tag_name = element.tag
@@ -215,7 +193,7 @@ class WorkSheetParser(object):
         else:
             row, column = self._row_count, self._col_count
 
-        cell = Cell(self.ws, row=row, col_idx=column, style_array=style_array)
+        cell = Cell(self.ws, row=row, column=column, style_array=style_array)
         self.ws._cells[(row, column)] = cell
 
         if value is not None:
@@ -242,7 +220,7 @@ class WorkSheetParser(object):
                     richtext = Text.from_tree(child)
                     value = richtext.content
 
-        if self.guess_types or value is None:
+        if value is None:
             cell.value = value
         else:
             cell._value = value

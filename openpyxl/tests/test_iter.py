@@ -20,6 +20,7 @@ def DummyWorkbook():
     class Workbook:
         epoch = None
         _cell_styles = [StyleArray([0, 0, 0, 0, 0, 0, 0, 0, 0])]
+        data_only = False
 
         def __init__(self):
             self.sheetnames = []
@@ -41,23 +42,6 @@ def test_open_many_sheets(datadir):
 
 @pytest.mark.parametrize("filename, expected",
                          [
-                             ("sheet2.xml", (4, 1, 27, 30)),
-                             ("sheet2_no_dimension.xml", None),
-                             ("sheet2_no_span.xml", None),
-                             ("sheet2_invalid_dimension.xml", (None, 1, None, 113)),
-                          ]
-                         )
-def test_read_dimension(datadir, filename, expected):
-    from openpyxl.worksheet.read_only import read_dimension
-
-    datadir.join("reader").chdir()
-    with open(filename) as handle:
-        dimension = read_dimension(handle)
-    assert dimension == expected
-
-
-@pytest.mark.parametrize("filename, expected",
-                         [
                              ("sheet2.xml", (1, 4, 30, 27)),
                              ("sheet2_no_dimension.xml", (1, 1, None, None)),
                          ]
@@ -73,6 +57,7 @@ def test_force_dimension(datadir, DummyWorkbook, ReadOnlyWorksheet):
     datadir.join("reader").chdir()
 
     ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", "sheet2_no_dimension.xml", [])
+    ws.shared_strings = ['A', 'B']
 
     dims = ws.calculate_dimension(True)
     assert dims == "A1:AA30"
@@ -140,6 +125,7 @@ def test_get_max_cell(datadir, DummyWorkbook, ReadOnlyWorksheet, filename):
     datadir.join("reader").chdir()
 
     ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", filename, [])
+    ws.shared_strings = ['A', 'B']
     rows = tuple(ws.rows)
     assert rows[-1][-1].coordinate == "AA30"
 
@@ -165,9 +151,9 @@ class TestRead:
     def test_getitem(self, sample_workbook):
         wb = sample_workbook
         ws = wb['Sheet1 - Text']
-        assert list(ws.iter_rows("A1"))[0][0] == ws['A1']
-        assert list(ws.iter_rows("A1:D30")) == list(ws["A1:D30"])
-        assert list(ws.iter_rows("A1:D30")) == list(ws["A1":"D30"])
+        assert tuple(ws.iter_rows(max_col=1, max_row=1))[0][0] == ws['A1']
+        assert tuple(ws.iter_rows(max_col=4, max_row=30)) == ws["A1:D30"]
+        assert ws['A1:D30'] == ws["A1":"D30"]
 
 
     def test_max_row(self, sample_workbook):
@@ -189,12 +175,6 @@ class TestRead:
         assert ws.max_column == col
 
 
-    def test_read_single_cell_range(self, sample_workbook):
-        wb = sample_workbook
-        ws = wb['Sheet1 - Text']
-        assert 'This is cell A1 in Sheet 1' == list(ws.iter_rows('A1'))[0][0].value
-
-
     def test_read_fast_integrated_text(self, sample_workbook):
         expected = [
             ['This is cell A1 in Sheet 1', None, None, None, None, None, None],
@@ -214,7 +194,7 @@ class TestRead:
     def test_read_single_cell_range(self, sample_workbook):
         wb = sample_workbook
         ws = wb['Sheet1 - Text']
-        assert 'This is cell A1 in Sheet 1' == list(ws.iter_rows('A1'))[0][0].value
+        assert 'This is cell A1 in Sheet 1' == ws['A1'].value
 
 
     def test_read_single_cell(self, sample_workbook):
@@ -229,9 +209,8 @@ class TestRead:
     def test_read_fast_integrated_numbers(self, sample_workbook):
         wb = sample_workbook
         expected = [[x + 1] for x in range(30)]
-        query_range = 'D1:D30'
         ws = wb['Sheet2 - Numbers']
-        for row, expected_row in zip(ws.iter_rows(query_range), expected):
+        for row, expected_row in zip(ws['D1:D30'], expected):
             row_values = [x.value for x in row]
             assert row_values == expected_row
 
@@ -241,37 +220,36 @@ class TestRead:
         query_range = 'K1:K30'
         expected = expected = [[(x + 1) / 100.0] for x in range(30)]
         ws = wb['Sheet2 - Numbers']
-        for row, expected_row in zip(ws.iter_rows(query_range), expected):
+        for row, expected_row in zip(ws['K1:K30'], expected):
             row_values = [x.value for x in row]
             assert row_values == expected_row
 
 
-    @pytest.mark.parametrize("cell, value",
+    @pytest.mark.parametrize("coord, value",
         [
         ("A1", datetime.datetime(1973, 5, 20)),
         ("C1", datetime.datetime(1973, 5, 20, 9, 15, 2))
         ]
         )
-    def test_read_single_cell_date(self, sample_workbook, cell, value):
+    def test_read_single_cell_date(self, sample_workbook, coord, value):
         wb = sample_workbook
         ws = wb['Sheet4 - Dates']
-        rows = ws.iter_rows(cell)
-        cell = list(rows)[0][0]
+        cell = ws[coord]
         assert cell.value == value
 
-    @pytest.mark.parametrize("cell, expected",
+    @pytest.mark.parametrize("coord, expected",
         [
         ("G9", True),
         ("G10", False)
         ]
         )
-    def test_read_boolean(self, sample_workbook, cell, expected):
+    def test_read_boolean(self, sample_workbook, coord, expected):
         wb = sample_workbook
         ws = wb["Sheet2 - Numbers"]
-        row = list(ws.iter_rows(cell))
-        assert row[0][0].coordinate == cell
-        assert row[0][0].data_type == 'b'
-        assert row[0][0].value == expected
+        cell = ws[coord]
+        assert cell.coordinate == coord
+        assert cell.data_type == 'b'
+        assert cell.value == expected
 
 
 @pytest.mark.parametrize("data_only, expected",
@@ -284,8 +262,7 @@ def test_read_single_cell_formula(datadir, data_only, expected):
     datadir.join("genuine").chdir()
     wb = load_workbook("sample.xlsx", read_only=True, data_only=data_only)
     ws = wb["Sheet3 - Formulas"]
-    rows = ws.iter_rows("D2")
-    cell = list(rows)[0][0]
+    cell = ws["D2"]
     assert ws.parent.data_only == data_only
     assert cell.value == expected
 
@@ -346,7 +323,6 @@ def test_read_with_missing_cells(datadir, DummyWorkbook, ReadOnlyWorksheet):
 
 
 def test_read_row(datadir, DummyWorkbook, ReadOnlyWorksheet):
-    datadir.join("reader").chdir()
 
     src = b"""
     <sheetData  xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" >
