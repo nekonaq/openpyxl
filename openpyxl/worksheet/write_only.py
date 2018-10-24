@@ -4,10 +4,7 @@ from __future__ import absolute_import
 
 """Write worksheets to xml representations in an optimized way"""
 
-import atexit
 from inspect import isgenerator
-import os
-from tempfile import NamedTemporaryFile
 
 from openpyxl.cell import Cell, WriteOnlyCell
 from openpyxl.drawing.spreadsheet_drawing import SpreadsheetDrawing
@@ -16,30 +13,10 @@ from .worksheet import Worksheet
 from .related import Related
 
 from openpyxl.utils.exceptions import WorkbookAlreadySaved
-
-from openpyxl.writer.etree_worksheet import write_cell
-from openpyxl.writer.worksheet import write_drawing, write_conditional_formatting
 from openpyxl.xml.constants import SHEET_MAIN_NS
 from openpyxl.xml.functions import xmlfile
 
-ALL_TEMP_FILES = []
-
-
-@atexit.register
-def _openpyxl_shutdown():
-    ALL_TEMP_FILES
-    for path in ALL_TEMP_FILES:
-        if os.path.exists(path):
-            os.remove(path)
-
-
-def create_temporary_file(suffix=''):
-    fobj = NamedTemporaryFile(mode='w+', suffix=suffix,
-                              prefix='openpyxl.', delete=False)
-    filename = fobj.name
-    fobj.close()
-    ALL_TEMP_FILES.append(filename)
-    return filename
+from .writer import WorksheetWriter
 
 
 class WriteOnlyWorksheet(_WorkbookChild):
@@ -51,7 +28,8 @@ class WriteOnlyWorksheet(_WorkbookChild):
     """
 
     __saved = False
-    writer = None
+    _writer = None
+    _rows = None
     _rel_type = Worksheet._rel_type
     _path = Worksheet._path
     mime_type = Worksheet.mime_type
@@ -61,7 +39,6 @@ class WriteOnlyWorksheet(_WorkbookChild):
         super(WriteOnlyWorksheet, self).__init__(parent, title)
         self._max_col = 0
         self._max_row = 0
-        self._fileobj_name = create_temporary_file()
 
         # Methods from Worksheet
         self._add_row = Worksheet._add_row.__get__(self)
@@ -118,110 +95,55 @@ class WriteOnlyWorksheet(_WorkbookChild):
 
 
     @property
-    def filename(self):
-        return self._fileobj_name
+    def closed(self):
+        return self.__saved
 
 
-    def _write_header(self):
+    def _write_rows(self):
         """
-        Generator that creates the XML file and the sheet header
+        Send rows to the writer's stream
         """
+        try:
+            xf = self._writer.xf.send(True)
+        except StopIteration:
+            self._already_saved()
 
-        with xmlfile(self.filename) as xf:
-            with xf.element("worksheet", xmlns=SHEET_MAIN_NS):
+        with xf.element("sheetData"):
+            row_idx = 1
+            try:
+                while True:
+                    row = (yield)
+                    row = self._values_to_row(row, row_idx)
+                    self._writer.write_row(xf, row, row_idx)
+                    row_idx += 1
+            except GeneratorExit:
+                pass
 
-                if self.sheet_properties:
-                    pr = self.sheet_properties.to_tree()
+        self._writer.xf.send(None)
 
-                xf.write(pr)
-                xf.write(self.views.to_tree())
 
-                cols = self.column_dimensions.to_tree()
+    def _get_writer(self):
+        if self._writer is None:
+            self._writer = WorksheetWriter(self)
+            self._writer.write_top()
 
-                self.sheet_format.outlineLevelCol = self.column_dimensions.max_outline
-                xf.write(self.sheet_format.to_tree())
-
-                if cols is not None:
-                    xf.write(cols)
-
-                with xf.element("sheetData"):
-                    cell = WriteOnlyCell(self)
-                    try:
-                        while True:
-                            row = (yield)
-                            row_idx = self._max_row
-                            attrs = {'r': '%d' % row_idx}
-                            if row_idx in self.row_dimensions:
-                                dim = self.row_dimensions[row_idx]
-                                attrs.update(dict(dim))
-
-                            with xf.element("row", attrs):
-
-                                for col_idx, value in enumerate(row, 1):
-                                    if value is None:
-                                        continue
-                                    try:
-                                        cell.value = value
-                                    except ValueError:
-                                        if isinstance(value, Cell):
-                                            cell = value
-                                        else:
-                                            raise ValueError
-
-                                    cell.col_idx = col_idx
-                                    cell.row = row_idx
-
-                                    styled = cell.has_style
-                                    write_cell(xf, self, cell, styled)
-
-                                    if styled: # styled cell or datetime
-                                        cell = WriteOnlyCell(self)
-
-                    except GeneratorExit:
-                        pass
-
-                if self.protection.sheet:
-                    xf.write(self.protection.to_tree())
-
-                if self.auto_filter.ref:
-                    xf.write(self.auto_filter.to_tree())
-
-                if self.sort_state.ref:
-                    xf.write(self.sort_state.to_tree())
-
-                if self.conditional_formatting:
-                    cfs = write_conditional_formatting(self)
-                    for cf in cfs:
-                        xf.write(cf)
-
-                if self.data_validations.count:
-                    xf.write(self.data_validations.to_tree())
-
-                if bool(self.HeaderFooter):
-                    xf.write(self.HeaderFooter.to_tree())
-
-                drawing = write_drawing(self)
-                if drawing is not None:
-                    xf.write(drawing)
-
-                if self._comments:
-                    legacyDrawing = Related(id="anysvml")
-                    xml = legacyDrawing.to_tree("legacyDrawing")
-                    xf.write(xml)
 
     def close(self):
         if self.__saved:
             self._already_saved()
-        if self.writer is None:
-            self.writer = self._write_header()
-            next(self.writer)
-        self.writer.close()
+
+        self._get_writer()
+
+        if self._rows is None:
+            self._writer.write_rows()
+        else:
+            self._rows.close()
+
+        self._writer.write_tail()
+
+        self._writer.close()
         self.__saved = True
 
-    def _cleanup(self):
-        os.remove(self.filename)
-        ALL_TEMP_FILES.remove(self.filename
-                              )
 
     def append(self, row):
         """
@@ -234,16 +156,39 @@ class WriteOnlyWorksheet(_WorkbookChild):
             ):
             self._invalid_row(row)
 
-        self._max_row += 1
+        self._get_writer()
 
-        if self.writer is None:
-            self.writer = self._write_header()
-            next(self.writer)
+        if self._rows is None:
+            self._rows = self._write_rows()
+            next(self._rows)
 
-        try:
-            self.writer.send(row)
-        except StopIteration:
-            self._already_saved()
+        self._rows.send(row)
+
+
+    def _values_to_row(self, values, row_idx):
+        """
+        Convert whatever has been appended into a form suitable for work_rows
+        """
+        cell = WriteOnlyCell(self)
+
+        for col_idx, value in enumerate(values, 1):
+            if value is None:
+                continue
+            try:
+                cell.value = value
+            except ValueError:
+                if isinstance(value, Cell):
+                    cell = value
+                else:
+                    raise ValueError
+
+            cell.column = col_idx
+            cell.row = row_idx
+
+            yield cell
+            # reset cell if style applied
+            if cell.has_style:
+                cell = WriteOnlyCell(self)
 
 
     def _already_saved(self):
@@ -254,14 +199,3 @@ class WriteOnlyWorksheet(_WorkbookChild):
         raise TypeError('Value must be a list, tuple, range or a generator Supplied value is {0}'.format(
             type(iterable))
                         )
-
-    def _write(self):
-        self._drawing = SpreadsheetDrawing()
-        self._drawing.charts = self._charts
-        self._drawing.images = self._images
-        if not self.__saved:
-            self.close()
-        with open(self.filename) as src:
-            out = src.read()
-        self._cleanup()
-        return out
