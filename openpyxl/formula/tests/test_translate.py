@@ -229,7 +229,13 @@ class TestTranslator(object):
         ("31/12/1999", "A1", "B2", "31/12/1999"),
         ("", "A1", "B2", ""),
     ])
-    def test_translate_formula(self, Translator, formula,
+    def test_translate_formula_range(self, Translator, formula,
                                origin, dest, result):
         trans = Translator(formula, origin)
         assert trans.translate_formula(dest) == result
+
+
+    def test_translate_formula_coordinates(self, Translator):
+        trans = Translator("='Summary slices'!C3", "A1")
+        result = trans.translate_formula(row_delta=2, col_delta=3)
+        assert result == "='Summary slices'!F5"
