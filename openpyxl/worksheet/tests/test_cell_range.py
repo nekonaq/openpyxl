@@ -3,6 +3,8 @@ from __future__ import absolute_import
 import pytest
 
 from copy import copy
+from ..worksheet import Worksheet
+from openpyxl.workbook import Workbook
 
 @pytest.fixture
 def CellRange():
@@ -238,6 +240,15 @@ class TestCellRange:
         cr1 = CellRange("A1:F5")
         cr2 = CellRange("A2:F4")
         assert cr1 > cr2
+
+
+    def test_edge_cells(self,CellRange):
+        cr = CellRange("A1:C3")
+        assert cr.top == [(1,1), (1,2), (1,3)]
+        assert cr.bottom == [(3,1), (3,2), (3,3)]
+        assert cr.left == [(1,1), (2,1), (3,1)]
+        assert cr.right == [(1,3), (2,3), (3,3)]
+
 
 
 @pytest.fixture
