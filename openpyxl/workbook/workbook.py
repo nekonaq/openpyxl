@@ -14,7 +14,7 @@ from openpyxl.utils.indexed_list import IndexedList
 from openpyxl.utils.datetime  import CALENDAR_WINDOWS_1900
 from openpyxl.utils.exceptions import ReadOnlyWorkbookException
 
-from openpyxl.writer.excel import save_workbook, save_dump
+from openpyxl.writer.excel import save_workbook
 
 from openpyxl.styles.cell_style import StyleArray
 from openpyxl.styles.named_styles import NamedStyle
@@ -52,7 +52,6 @@ class Workbook(object):
 
     _read_only = False
     _data_only = False
-    _keep_links = True
     template = False
     path = "/xl/workbook.xml"
 
@@ -127,9 +126,16 @@ class Workbook(object):
     def write_only(self):
         return self.__write_only
 
+
     @property
-    def keep_links(self):
-        return self._keep_links
+    def guess_types(self):
+        return getattr(self, '__guess_types', False)
+
+
+    @guess_types.setter
+    def guess_types(self, value):
+        self.__guess_types = value
+
 
     @deprecated("Use the .active property")
     def get_active_sheet(self):
@@ -384,10 +390,9 @@ class Workbook(object):
         """
         if self.read_only:
             raise TypeError("""Workbook is read-only""")
-        if self.write_only:
-            save_dump(self, filename)
-        else:
-            save_workbook(self, filename)
+        if self.write_only and not self.worksheets:
+            self.create_sheet()
+        save_workbook(self, filename)
 
 
     @property
