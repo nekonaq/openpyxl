@@ -161,6 +161,13 @@ class TestColDimension:
             cd.style = "Normal"
 
 
+    def test_empty_col(self, ColumnDimension):
+        ws = DummyWorksheet()
+        cd = ColumnDimension(ws, index="C")
+        cd.reindex()
+        assert cd.to_tree() is None
+
+
 class TestGrouping:
 
     def test_group_columns_simple(self):
@@ -185,6 +192,31 @@ class TestGrouping:
 
 
     def test_no_cols(self):
+        from ..dimensions import DimensionHolder
+        dh = DimensionHolder(None)
+        node = dh.to_tree()
+        assert node is None
+
+    def test_group_rows_simple(self):
+        from ..worksheet import Worksheet
+        ws = Worksheet(DummyWorkbook())
+        dims = ws.row_dimensions
+        dims.group(1, 5, 1)
+        assert len(dims) == 5
+        group = list(dims.values())[0]
+        assert group.outline_level == 1
+
+
+    def test_group_rows_collapse(self):
+        from ..worksheet import Worksheet
+        ws = Worksheet(DummyWorkbook())
+        dims = ws.row_dimensions
+        dims.group(1, 10, 1, hidden=True)
+        group = list(dims.values())[5]
+        assert group.hidden
+
+
+    def test_no_rows(self):
         from ..dimensions import DimensionHolder
         dh = DimensionHolder(None)
         node = dh.to_tree()

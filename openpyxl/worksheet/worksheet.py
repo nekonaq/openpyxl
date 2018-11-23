@@ -123,7 +123,8 @@ class Worksheet(_WorkbookChild):
         self._setup()
 
     def _setup(self):
-        self.row_dimensions = BoundDictionary("index", self._add_row)
+        self.row_dimensions = DimensionHolder(worksheet=self,
+                                              default_factory=self._add_row)
         self.column_dimensions = DimensionHolder(worksheet=self,
                                                  default_factory=self._add_column)
         self.page_breaks = PageBreak()
@@ -167,12 +168,12 @@ class Worksheet(_WorkbookChild):
 
     @property
     def selected_cell(self):
-        return self.sheet_view.selection.sqref
+        return self.sheet_view.selection[0].sqref
 
 
     @property
     def active_cell(self):
-        return self.sheet_view.selection.activeCell
+        return self.sheet_view.selection[0].activeCell
 
     @property
     def show_gridlines(self):
@@ -559,7 +560,7 @@ class Worksheet(_WorkbookChild):
         :param max_col: largest column index (1-based index)
         :type max_col: int
 
-        :param max_row: smallest row index (1-based index)
+        :param max_row: largest row index (1-based index)
         :type max_row: int
 
         :rtype: generator
@@ -610,7 +611,7 @@ class Worksheet(_WorkbookChild):
         :param max_col: largest column index (1-based index)
         :type max_col: int
 
-        :param max_row: smallest row index (1-based index)
+        :param max_row: largest row index (1-based index)
         :type max_row: int
 
         :rtype: generator
@@ -705,12 +706,19 @@ class Worksheet(_WorkbookChild):
         """ Set merge on a cell range.  Range is a cell range (e.g. A1:E1) """
 
         self.merged_cells.add(cr.coord)
+        self._clean_merge_range(cr)
+
+
+    def _clean_merge_range(self, cr):
+        """
+        Remove all but the top left-cell from a range of merged cells
+        """
 
         min_col, min_row, max_col, max_row = cr.bounds
         rows = range(min_row, max_row+1)
         cols = range(min_col, max_col+1)
         cells = product(rows, cols)
-        # all but the top-left cell are removed
+
         for c in islice(cells, 1, None):
             if c in self._cells:
                 del self._cells[c]
@@ -816,6 +824,7 @@ class Worksheet(_WorkbookChild):
         Insert row or rows before row==idx
         """
         self._move_cells(min_row=idx, offset=amount, row_or_col="row")
+        self._current_row = self.max_row
 
 
     def insert_cols(self, idx, amount=1):
@@ -838,6 +847,9 @@ class Worksheet(_WorkbookChild):
             for col in range(self.min_column, self.max_column+1):
                 if (row, col) in self._cells:
                     del self._cells[row, col]
+        self._current_row = self.max_row
+        if not self._cells:
+            self._current_row = 0
 
 
     def delete_cols(self, idx, amount=1):

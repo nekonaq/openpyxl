@@ -7,6 +7,7 @@ from datetime import (
     time,
     datetime,
     date,
+    timedelta,
 )
 
 # 3rd party imports
@@ -25,7 +26,7 @@ def DummyWorksheet():
     from openpyxl.cell import Cell
 
     class Wb(object):
-        excel_base_date = CALENDAR_WINDOWS_1900
+        epoch = CALENDAR_WINDOWS_1900
         _fonts = IndexedList()
         _fills = IndexedList()
         _borders = IndexedList()
@@ -187,6 +188,21 @@ def test_insert_date(dummy_cell, value, number_format):
     assert cell.number_format == number_format
 
 
+@pytest.mark.pandas_required
+def test_timstamp(dummy_cell):
+    from pandas import Timestamp
+    cell = dummy_cell
+    cell.value = Timestamp("2018-09-05")
+    assert cell.number_format == "yyyy-mm-dd h:mm:ss"
+
+
+def test_not_overwrite_time_format(dummy_cell):
+    cell = dummy_cell
+    cell.number_format = "mmm-yy"
+    cell.value = date(2010, 7, 13)
+    assert cell.number_format == "mmm-yy"
+
+
 @pytest.mark.parametrize("value, is_date",
                          [
                              (None, True,),
@@ -245,13 +261,14 @@ def test_time_regex(value, expected):
     assert m == expected
 
 
-#def test_timedelta(dummy_cell):
-    #cell = dummy_cell
-    #cell.value = timedelta(days=1, hours=3)
-    #assert cell.value == 1.125
-    #assert cell.data_type == 'n'
-    #assert cell.is_date is False
-    #assert cell.number_format == "[hh]:mm:ss"
+@pytest.mark.xfail
+def test_timedelta(dummy_cell):
+    cell = dummy_cell
+    cell.value = timedelta(days=1, hours=3)
+    assert cell.value == 1.125
+    assert cell.data_type == 'n'
+    assert cell.is_date is False
+    assert cell.number_format == "[hh]:mm:ss"
 
 
 def test_repr(dummy_cell):

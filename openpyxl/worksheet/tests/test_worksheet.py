@@ -342,7 +342,7 @@ class TestWorksheet:
     )
     def test_getitem_invalid(self, Worksheet, key):
         ws = Worksheet(Workbook())
-        with pytest.raises(IndexError):
+        with pytest.raises((IndexError, ValueError)):
             c = ws[key]
 
 
@@ -500,6 +500,21 @@ class TestWorksheet:
         assert ws.print_area == result
 
 
+    def test_active_cell(self, Worksheet):
+        ws = Worksheet(Workbook())
+        assert ws.active_cell == 'A1'
+
+
+    def test_selected_cell(self, Worksheet):
+        ws = Worksheet(Workbook())
+        assert ws.selected_cell == 'A1'
+
+
+    def test_gridlines(self, Worksheet):
+        ws = Worksheet(Workbook())
+        assert not ws.show_gridlines
+
+
 def test_freeze_panes_horiz(Worksheet):
     ws = Worksheet(Workbook())
     ws.freeze_panes = 'A4'
@@ -634,6 +649,7 @@ class TestEditableWorksheet:
         ws.insert_rows(2, 2)
 
         assert ws.max_row == 8
+        assert ws._current_row == 8
         assert [c.value for c in ws[2]] == [None]*8
 
 
@@ -652,7 +668,17 @@ class TestEditableWorksheet:
         ws.delete_rows(2, 3)
 
         assert ws.max_row == 3
+        assert ws._current_row == 3
         assert [c.value for c in ws['B']] == ['B1', 'B5', 'B6']
+
+
+    def test_deleta_all_rows(self, dummy_worksheet):
+        ws = dummy_worksheet
+
+        ws.delete_rows(1, 6)
+
+        assert ws.max_row == 1
+        assert ws._current_row == 0
 
 
     def test_delete_cols(self, dummy_worksheet):

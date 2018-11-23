@@ -25,21 +25,30 @@ try:
 except IOError:
     README = ''
 
+try:
+    from importlib.util import module_from_spec, spec_from_file_location
+    spec = spec_from_file_location("constants", "./openpyxl/_constants.py")
+    constants = module_from_spec(spec)
+    spec.loader.exec_module(constants)
+except ImportError:
+    # python2.7
+    import imp
+    constants = imp.load_source("constants", "./openpyxl/_constants.py")
 
-import json
-src_file = os.path.join(here, "openpyxl", ".constants.json")
-with open(src_file) as src:
-    constants = json.load(src)
-    __author__ = constants['__author__']
-    __author_email__ = constants["__author_email__"]
-    __license__ = constants["__license__"]
-    __maintainer_email__ = constants["__maintainer_email__"]
-    __url__ = constants["__url__"]
-    __version__ = constants["__version__"]
+__author__ = constants.__author__
+__author_email__ = constants.__author_email__
+__license__ = constants.__license__
+__maintainer_email__ = constants.__maintainer_email__
+__url__ = constants.__url__
+__version__ = constants.__version__
 
 
-setup(name='openpyxl',
-    packages=find_packages(),
+setup(
+    name='openpyxl',
+    packages=find_packages(
+        exclude=["*.tests", "*.test_.*", "test_.*", "tests", "develop"]
+        ),
+    package_dir={},
     # metadata
     version=__version__,
     description="A Python library to read/write Excel 2010 xlsx/xlsm files",
@@ -52,8 +61,10 @@ setup(name='openpyxl',
     install_requires=[
         'jdcal', 'et_xmlfile',
         ],
-    package_data={
-        'openpyxl': ['.constants.json']
+    project_urls={
+        'Documentation': 'https://openpyxl.readthedocs.io/en/stable/',
+        'Source': 'https://bitbucket.org/openpyxl/openpyxl',
+        'Tracker': 'https://bitbucket.org/openpyxl/openpyxl/issues',
     },
     classifiers=[
                  'Development Status :: 5 - Production/Stable',
@@ -66,5 +77,6 @@ setup(name='openpyxl',
                  'Programming Language :: Python :: 3.4',
                  'Programming Language :: Python :: 3.5',
                  'Programming Language :: Python :: 3.6',
+                 'Programming Language :: Python :: 3.7',
                  ],
     )

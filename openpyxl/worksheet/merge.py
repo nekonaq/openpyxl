@@ -8,17 +8,25 @@ from openpyxl.descriptors import (
     Sequence,
 )
 
+from .cell_range import CellRange
 
-class MergeCell(Serialisable):
+
+class MergeCell(CellRange):
 
     tagname = "mergeCell"
+    ref = CellRange.coord
 
-    ref = String()
+    __attrs__ = ("ref",)
+
 
     def __init__(self,
                  ref=None,
                 ):
-        self.ref = ref
+        super(MergeCell, self).__init__(ref)
+
+
+    def __copy__(self):
+        return self.__class__(self.ref)
 
 
 class MergeCells(Serialisable):

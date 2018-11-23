@@ -19,7 +19,7 @@ class TestGradientFillProperties:
         fill = GradientFillProperties()
         xml = tostring(fill.to_tree())
         expected = """
-        <gradFill></gradFill>
+        <a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" />
         """
         diff = compare_xml(xml, expected)
         assert diff is None, diff
@@ -27,7 +27,7 @@ class TestGradientFillProperties:
 
     def test_from_xml(self, GradientFillProperties):
         src = """
-        <gradFill></gradFill>
+        <a:gradFill xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" />
         """
         node = fromstring(src)
         fill = GradientFillProperties.from_tree(node)
@@ -36,7 +36,7 @@ class TestGradientFillProperties:
 
 @pytest.fixture
 def Transform2D():
-    from ..shapes import Transform2D
+    from ..geometry import Transform2D
     return Transform2D
 
 
@@ -46,7 +46,7 @@ class TestTransform2D:
         shapes = Transform2D()
         xml = tostring(shapes.to_tree())
         expected = """
-        <xfrm></xfrm>
+        <xfrm xmlns="http://schemas.openxmlformats.org/drawingml/2006/main" />
         """
         diff = compare_xml(xml, expected)
         assert diff is None, diff
@@ -63,7 +63,7 @@ class TestTransform2D:
 
 @pytest.fixture
 def Camera():
-    from ..shapes import Camera
+    from ..geometry import Camera
     return Camera
 
 
@@ -90,7 +90,7 @@ class TestCamera:
 
 @pytest.fixture
 def LightRig():
-    from ..shapes import LightRig
+    from ..geometry import LightRig
     return LightRig
 
 
@@ -117,7 +117,7 @@ class TestLightRig:
 
 @pytest.fixture
 def Bevel():
-    from ..shapes import Bevel
+    from ..geometry import Bevel
     return Bevel
 
 
@@ -140,3 +140,84 @@ class TestBevel:
         node = fromstring(src)
         bevel = Bevel.from_tree(node)
         assert bevel == Bevel( w=101600, h=101600)
+
+
+@pytest.fixture
+def SphereCoords():
+    from ..geometry import SphereCoords
+    return SphereCoords
+
+
+class TestSphereCoords:
+
+    def test_ctor(self, SphereCoords):
+        rot = SphereCoords(lat=90, lon=45, rev=60)
+        xml = tostring(rot.to_tree())
+        expected = """
+        <sphereCoords lat="90" lon="45" rev="60" />
+        """
+        diff = compare_xml(xml, expected)
+        assert diff is None, diff
+
+
+    def test_from_xml(self, SphereCoords):
+        src = """
+        <sphereCoords lat="90" lon="45" rev="60" />
+        """
+        node = fromstring(src)
+        rot = SphereCoords.from_tree(node)
+        assert rot == SphereCoords(lat=90, lon=45, rev=60)
+
+
+@pytest.fixture
+def Vector3D():
+    from ..geometry import Vector3D
+    return Vector3D
+
+
+class TestVector3D:
+
+    def test_ctor(self, Vector3D):
+        vector = Vector3D(dx=100000, dy=300000, dz=50000)
+        xml = tostring(vector.to_tree())
+        expected = """
+        <vector dx="100000" dy="300000" dz="50000" />
+        """
+        diff = compare_xml(xml, expected)
+        assert diff is None, diff
+
+
+    def test_from_xml(self, Vector3D):
+        src = """
+        <vector dx="100000" dy="300000" dz="50000" />
+        """
+        node = fromstring(src)
+        vector = Vector3D.from_tree(node)
+        assert vector == Vector3D(dx=100000, dy=300000, dz=50000)
+
+
+@pytest.fixture
+def Point3D():
+    from ..geometry import Point3D
+    return Point3D
+
+
+class TestPoint3D:
+
+    def test_ctor(self, Point3D):
+        pt = Point3D(x=40000, y=60000, z=100000)
+        xml = tostring(pt.to_tree())
+        expected = """
+        <anchor x="40000" y="60000" z="100000" />
+        """
+        diff = compare_xml(xml, expected)
+        assert diff is None, diff
+
+
+    def test_from_xml(self, Point3D):
+        src = """
+        <anchor x="40000" y="60000" z="100000" />
+        """
+        node = fromstring(src)
+        pt = Point3D.from_tree(node)
+        assert pt == Point3D(x=40000, y=60000, z=100000)

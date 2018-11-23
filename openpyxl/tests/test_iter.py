@@ -2,6 +2,8 @@ from __future__ import absolute_import
 # Copyright (c) 2010-2018 openpyxl
 
 import datetime
+import gc
+import os
 from io import BytesIO
 
 import pytest
@@ -16,7 +18,7 @@ from openpyxl.cell.read_only import EMPTY_CELL
 @pytest.fixture
 def DummyWorkbook():
     class Workbook:
-        excel_base_date = None
+        epoch = None
         _cell_styles = [StyleArray([0, 0, 0, 0, 0, 0, 0, 0, 0])]
 
         def __init__(self):
@@ -84,6 +86,43 @@ def test_calculate_dimension(datadir):
     wb = load_workbook(filename="sample.xlsx", read_only=True)
     sheet2 = wb['Sheet2 - Numbers']
     assert sheet2.calculate_dimension() == 'D1:AA30'
+
+
+def count_open_fds():
+    """Return the number of open file descriptors for this process
+
+    The implementation assumes that all FDs are smaller than 10,000 and that
+    nobody (other threads, garbage collection) modifies the file descriptors
+    while we are counting.
+    """
+    count = 0
+    for i in range(10000):
+        try:
+            os.fstat(i)
+        except Exception:
+            pass
+        else:
+            count += 1
+    return count
+
+
+def test_file_descriptor_leak(datadir):
+    datadir.join("genuine").chdir()
+
+    try:
+        gc.disable()
+        gc.collect()
+        num_fds_before = count_open_fds()
+
+        wb = load_workbook(filename="sample.xlsx", read_only=True)
+        wb.close()
+
+        num_fds_after = count_open_fds()
+    finally:
+        gc.enable()
+
+    assert num_fds_after == num_fds_before
+
 
 def test_nonstandard_name(datadir):
     datadir.join('reader').chdir()
@@ -338,6 +377,7 @@ def test_read_row(datadir, DummyWorkbook, ReadOnlyWorksheet):
 
 
 def test_read_empty_row(datadir, DummyWorkbook, ReadOnlyWorksheet):
+    datadir.join("reader").chdir()
 
     ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", "", [])
 
@@ -407,10 +447,22 @@ def test_read_cell_from_empty_row(DummyWorkbook, ReadOnlyWorksheet, row, column)
 
 
 def test_read_empty_rows(datadir, DummyWorkbook, ReadOnlyWorksheet):
+    datadir.join("reader").chdir()
 
     ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", "empty_rows.xml", [])
     rows = tuple(ws.rows)
     assert len(rows) == 7
+
+
+def test_iter_rows_empty_rows(datadir, DummyWorkbook, ReadOnlyWorksheet):
+    datadir.join("reader").chdir()
+
+    ws = ReadOnlyWorksheet(DummyWorkbook, "Sheet", "", "empty_rows.xml", [])
+
+    rows = tuple(ws.iter_rows(min_row=1, min_col=1, max_row=10, max_col=10))
+    assert len(rows) == 7
+    assert rows[0][0].value is None
+    assert rows[6][6].value is None
 
 
 def test_read_without_coordinates(DummyWorkbook, ReadOnlyWorksheet):
@@ -447,3 +499,11 @@ def test_read_empty_sheet(datadir, read_only):
     wb = load_workbook("empty.xlsx", read_only=read_only)
     ws = wb.active
     assert tuple(ws.rows) == tuple(ws.iter_rows())
+
+
+@pytest.mark.parametrize("read_only", [False, True])
+def test_read_mac_date(datadir, read_only):
+    datadir.join("genuine").chdir()
+    wb = load_workbook("mac_date.xlsx", read_only=read_only)
+    ws = wb.active
+    assert ws['A1'].value == datetime.datetime(2016, 10, 3, 0, 0)

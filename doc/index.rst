@@ -12,21 +12,11 @@
 :Version: |release|
 
 
-Introduction
-------------
-
-Openpyxl is a Python library for reading and writing Excel 2010
-xlsx/xlsm/xltx/xltm files.
-
-It was born from lack of existing library to read/write natively from Python
-the Office Open XML format.
-
-All kudos to the PHPExcel team as openpyxl was initially based on `PHPExcel
-<http://www.phpexcel.net/>`_.
+.. include:: ../README.rst
 
 
 Support
-+++++++
+-------
 
 This is an open source project, maintained by volunteers in their spare time.
 This may well mean that particular features or functions that you would like
@@ -48,20 +38,8 @@ of confidentiality you are unable to make a file publicly available then
 contact of one the developers.
 
 
-Sample code:
-++++++++++++
-
-.. literalinclude:: example.py
-
-
-User List
----------
-
-Official user list can be found on http://groups.google.com/group/openpyxl-users
-
-
-How to Contribute Code
-----------------------
+How to Contribute
+-----------------
 
 Any help will be greatly appreciated, just follow those steps:
 
@@ -97,7 +75,7 @@ For further information see :doc:`development`
 
 
 Other ways to help
-------------------
+++++++++++++++++++
 
 There are several ways to contribute, even if you can't code (or can't code well):
 
@@ -139,7 +117,7 @@ without system packages::
 
 
 Working with a checkout
------------------------
++++++++++++++++++++++++
 
 Sometimes you might want to work with the checkout of a particular version.
 This may be the case if bugs have been fixed but a release has not yet been
@@ -151,6 +129,7 @@ made.
 
 Usage examples
 --------------
+
 
 Tutorial
 ++++++++
@@ -167,118 +146,114 @@ Cookbook
     usage
 
 
-Pandas and NumPy
-++++++++++++++++
+Performance
+-----------
 
 .. toctree::
+    :maxdepth: 1
 
-    pandas
-
-
-Charts
-++++++
-
-.. toctree::
-
-    charts/introduction
+    performance
 
 
-Comments
-++++++++
+Other topics
+------------
 
-.. toctree::
+    .. toctree::
+        :maxdepth: 1
 
-    comments
-
-
-Read/write large files
-++++++++++++++++++++++
-
-.. toctree::
-
-    optimized
+        optimized
 
 
-Working with styles
-+++++++++++++++++++
+    .. toctree::
+        :maxdepth: 1
 
-.. toctree::
+        editing_worksheets
 
-    styles
-    worksheet_properties
+    .. toctree::
+        :maxdepth: 1
 
+        pandas
 
-Conditional Formatting
-++++++++++++++++++++++
+    .. toctree::
+        :maxdepth: 1
 
-.. toctree::
+        charts/introduction
 
-    formatting
+    .. toctree::
+        :maxdepth: 1
 
+        comments
 
-Print Settings
-++++++++++++++++++++++
+    .. toctree::
+        :maxdepth: 1
 
-.. toctree::
+        styles
 
-    print_settings
+    .. toctree::
+        :maxdepth: 1
 
+        worksheet_properties
 
-Filtering and Sorting
-+++++++++++++++++++++
+    .. toctree::
+        :maxdepth: 1
 
-.. toctree::
+        formatting
 
-    filters
+    .. toctree::
+        :maxdepth: 1
 
+        pivot
 
-Worksheet Tables
-++++++++++++++++
+    .. toctree::
+        :maxdepth: 1
 
-.. toctree::
+        print_settings
 
-    worksheet_tables.rst
+    .. toctree::
+        :maxdepth: 1
 
+        filters
 
-Data Validation
-+++++++++++++++
+    .. toctree::
+        :maxdepth: 1
 
-.. toctree::
-
-    validation
-
-
-Defined Names & Ranges
-++++++++++++++++++++++
-
-.. toctree::
-
-    defined_names
-
-
-Parsing Formulas
-++++++++++++++++
-
-.. toctree::
-
-    formula
+        validation
 
 
-Protection
-++++++++++
+    .. toctree::
+        :maxdepth: 1
 
-.. toctree::
+        defined_names
 
-    protection
+    .. toctree::
+        :maxdepth: 1
+
+        worksheet_tables
+
+    .. toctree::
+        :maxdepth: 1
+
+        pivot
+
+    .. toctree::
+        :maxdepth: 1
+
+        formula
+
+    .. toctree::
+        :maxdepth: 1
+
+        protection
 
 
 Information for Developers
 --------------------------
 
-.. toctree::
+    .. toctree::
+        :maxdepth: 1
 
-    development
-    windows-development
+        development
+        windows-development
 
 
 API Documentation
@@ -290,6 +265,7 @@ Key Classes
 * :class:`openpyxl.workbook.workbook.Workbook`
 * :class:`openpyxl.worksheet.worksheet.Worksheet`
 * :class:`openpyxl.cell.cell.Cell`
+
 
 Full API
 ++++++++

@@ -52,7 +52,7 @@ class WorkbookParser:
         node = fromstring(src)
         package = WorkbookPackage.from_tree(node)
         if package.properties.date1904:
-            self.wb.excel_base_date = CALENDAR_MAC_1904
+            self.wb.epoch = CALENDAR_MAC_1904
 
         self.wb.code_name = package.properties.codeName
         self.wb.active = package.active
@@ -123,7 +123,10 @@ class WorkbookParser:
         d = {}
         for c in self.caches:
             cache = get_rel(self.archive, self.rels, id=c.id, cls=CacheDefinition)
-            records = get_rel(self.archive, cache.deps, cache.id, RecordList)
+            if cache.deps:
+                records = get_rel(self.archive, cache.deps, cache.id, RecordList)
+            else:
+                records = None
             cache.records = records
             d[c.cacheId]  = cache
         return d

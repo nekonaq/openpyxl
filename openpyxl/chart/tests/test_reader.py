@@ -22,6 +22,7 @@ def test_read(datadir):
 
     assert isinstance(chart, LineChart)
     assert chart.title.tx.rich.p[0].r[0].t == "Website Performance"
+    assert chart.display_blanks == "span"
 
     assert isinstance(chart.y_axis, NumericAxis)
     assert chart.y_axis.title.tx.rich.p[0].r[0].t == "Time in seconds"
@@ -30,14 +31,3 @@ def test_read(datadir):
     assert chart.x_axis.title is None
 
     assert len(chart.series) == 10
-
-
-def test_read_drawing(datadir):
-    datadir.chdir()
-
-    archive = ZipFile("sample.xlsx")
-    path = "xl/drawings/drawing1.xml"
-
-    from ..reader import find_charts
-    charts = find_charts(archive, path)
-    assert len(charts) == 6
