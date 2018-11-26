@@ -3,83 +3,36 @@ from __future__ import absolute_import
 
 """ Read worksheets on-demand
 """
-from zipfile import ZipExtFile
-# compatibility
-from openpyxl.compat import (
-    range,
-    deprecated
-)
 
-# package
-from openpyxl.cell.text import Text
-from openpyxl.xml.functions import iterparse, safe_iterator
-from openpyxl.xml.constants import SHEET_MAIN_NS
-
-from openpyxl.worksheet import Worksheet
-from openpyxl.utils import (
-    get_column_letter,
-    coordinate_to_tuple,
-)
-from openpyxl.worksheet.dimensions import SheetDimension
+from .worksheet import Worksheet
 from openpyxl.cell.read_only import ReadOnlyCell, EMPTY_CELL
+from openpyxl.utils import get_column_letter
 
-
-def read_dimension(source):
-    if hasattr(source, "encode"):
-        return
-
-    min_row = min_col = max_row = max_col = None
-    DIMENSION_TAG = '{%s}dimension' % SHEET_MAIN_NS
-    DATA_TAG = '{%s}sheetData' % SHEET_MAIN_NS
-    it = iterparse(source, tag=[DIMENSION_TAG, DATA_TAG])
-
-    for _event, element in it:
-        if element.tag == DIMENSION_TAG:
-            dim = SheetDimension.from_tree(element)
-            return dim.boundaries
-
-        elif element.tag == DATA_TAG:
-            # Dimensions missing
-            break
-        element.clear()
-
-
-ROW_TAG = '{%s}row' % SHEET_MAIN_NS
-CELL_TAG = '{%s}c' % SHEET_MAIN_NS
-VALUE_TAG = '{%s}v' % SHEET_MAIN_NS
-FORMULA_TAG = '{%s}f' % SHEET_MAIN_NS
-INLINE_TAG = '{%s}is' % SHEET_MAIN_NS
-DIMENSION_TAG = '{%s}dimension' % SHEET_MAIN_NS
+from ._reader import WorkSheetParser
 
 
 class ReadOnlyWorksheet(object):
 
-    _xml = None
     _min_column = 1
     _min_row = 1
     _max_column = _max_row = None
 
-    def __init__(self, parent_workbook, title, worksheet_path,
-                 xml_source, shared_strings):
+    cell = Worksheet.cell
+    __iter__ = Worksheet.__iter__
+
+
+    def __init__(self, parent_workbook, title, worksheet_path, shared_strings):
         self.parent = parent_workbook
         self.title = title
         self._current_row = None
-        self.worksheet_path = worksheet_path
-        self.shared_strings = shared_strings
-        self.base_date = parent_workbook.epoch
-        self.xml_source = xml_source
-        try:
-            source = self.xml_source
-            dimensions = read_dimension(source)
-        finally:
-            if isinstance(source, ZipExtFile):
-                source.close()
-        if dimensions is not None:
-            self.min_column, self.min_row, self.max_column, self.max_row = dimensions
+        self._worksheet_path = worksheet_path
+        self._shared_strings = shared_strings
+        self._get_size()
 
         # Methods from Worksheet
-        self.cell = Worksheet.cell.__get__(self)
         self.iter_rows = Worksheet.iter_rows.__get__(self)
+        self.values = Worksheet.values.__get__(self)
+        self.rows = Worksheet.rows.__get__(self)
 
 
     def __getitem__(self, key):
@@ -88,109 +41,88 @@ class ReadOnlyWorksheet(object):
         return meth(key)
 
 
-    @property
-    def xml_source(self):
-        """Parse xml source on demand, default to Excel archive"""
-        if self._xml is None:
-            return self.parent._archive.open(self.worksheet_path)
-        return self._xml
+    def _get_size(self):
+        src = self._get_source()
+        parser = WorkSheetParser(src, [])
+        dimensions = parser.parse_dimensions()
+        src.close()
+        if dimensions is not None:
+            self._min_column, self._min_row, self._max_column, self._max_row = dimensions
 
 
-    @xml_source.setter
-    def xml_source(self, value):
-        self._xml = value
+    def _get_source(self):
+        """Parse xml source on demand, must close after use"""
+        return self.parent._archive.open(self._worksheet_path)
 
 
-    @deprecated("Use ws.iter_rows()")
-    def get_squared_range(self, min_col, min_row, max_col, max_row):
-        return self._cells_by_row(min_col, min_row, max_col, max_row)
-
-
-    def _cells_by_row(self, min_col, min_row, max_col, max_row):
+    def _cells_by_row(self, min_col, min_row, max_col, max_row, values_only=False):
         """
         The source worksheet file may have columns or rows missing.
         Missing cells will be created.
         """
+        filler = EMPTY_CELL
+        if values_only:
+            filler = None
+
+        max_col = max_col or self.max_column
+        max_row = max_row or self.max_row
+        empty_row = []
         if max_col is not None:
-            empty_row = tuple(EMPTY_CELL for _ in range(min_col, max_col + 1))
-        else:
-            empty_row = []
-        row_counter = min_row
+            empty_row = (filler,) * (max_col + 1 - min_col)
 
-        p = iterparse(self.xml_source, tag=[ROW_TAG], remove_blank_text=True)
-        for _event, element in p:
-            if element.tag == ROW_TAG:
-                row_id = int(element.get("r", row_counter))
-
-                # got all the rows we need
-                if max_row is not None and row_id > max_row:
-                    break
-
-                # some rows are missing
-                for row_counter in range(row_counter, row_id):
-                    row_counter += 1
-                    yield empty_row
-
-                # return cells from a row
-                if min_row <= row_id:
-                    yield tuple(self._get_row(
-                        element, min_col, max_col, row_counter=row_counter))
-                    row_counter += 1
-
-                element.clear()
-
-        # some rows may be missing at end
-        if max_row is not None and max_row < row_counter:
-            for _ in range(row_counter, max_row + 1):
-                yield empty_row
-
-
-    def _get_row(self, element, min_col=1, max_col=None, row_counter=None):
-        """Return cells from a particular row"""
-        col_counter = min_col
-        data_only = getattr(self.parent, 'data_only', False)
-
-        for cell in safe_iterator(element, CELL_TAG):
-            coordinate = cell.get('r')
-            if coordinate:
-                row, column = coordinate_to_tuple(coordinate)
-            else:
-                row, column = row_counter, col_counter
-
-            if max_col is not None and column > max_col:
+        counter = min_row
+        idx = 1
+        src = self._get_source()
+        parser = WorkSheetParser(src, self._shared_strings,
+                                 data_only=self.parent.data_only, epoch=self.parent.epoch,
+                                 date_formats=self.parent._date_formats)
+        for idx, row in parser.parse():
+            if max_row is not None and idx > max_row:
                 break
 
-            if min_col <= column:
-                if col_counter < column:
-                    for col_counter in range(max(col_counter, min_col), column):
-                        # pad row with missing cells
-                        yield EMPTY_CELL
+            # some rows are missing
+            for _ in range(counter, idx):
+                counter += 1
+                yield empty_row
 
-                data_type = cell.get('t', 'n')
-                style_id = int(cell.get('s', 0))
-                value = None
+            # return cells from a row
+            if counter <= idx:
+                row = self._get_row(row, min_col, max_col, values_only)
+                counter += 1
+                yield row
 
-                formula = cell.findtext(FORMULA_TAG)
-                if formula is not None and not data_only:
-                    data_type = 'f'
-                    value = "=%s" % formula
+        if max_row is not None and max_row < idx:
+            for _ in range(counter, max_row+1):
+                yield empty_row
 
-                elif data_type == 'inlineStr':
-                    child = cell.find(INLINE_TAG)
-                    if child is not None:
-                        richtext = Text.from_tree(child)
-                        value = richtext.content
+        src.close()
 
+
+    def _get_row(self, row, min_col=1, max_col=None, values_only=False):
+        """
+        Make sure a row contains always the same number of cells or values
+        """
+        if not row:
+            return ()
+        last_col = row[-1]['column']
+        max_col = max_col or last_col
+        row_width = max_col + 1 - min_col
+
+        if values_only:
+            new_row = [None] * row_width
+        else:
+            new_row = [EMPTY_CELL] * row_width
+
+        for cell in row:
+            counter = cell['column']
+            if min_col <= counter <= max_col:
+                idx = counter - min_col
+                if values_only:
+                    new_row[idx] = cell['value']
                 else:
-                    value = cell.findtext(VALUE_TAG) or None
+                    new_row[idx] = ReadOnlyCell(self, **cell)
 
-                yield ReadOnlyCell(self, row, column,
-                                   value, data_type, style_id)
-            col_counter = column + 1
-
-        if max_col is not None:
-            for _ in range(max(min_col, col_counter), max_col+1):
-                yield EMPTY_CELL
+        return tuple(new_row)
 
 
     def _get_cell(self, row, column):
@@ -201,32 +133,16 @@ class ReadOnlyWorksheet(object):
         return EMPTY_CELL
 
 
-    @property
-    def rows(self):
-        return self.iter_rows()
-
-
-    def __iter__(self):
-        return self.iter_rows()
-
-
-    @property
-    def values(self):
-        for row in self.iter_rows():
-            yield tuple(c.value for c in row)
-
-
     def calculate_dimension(self, force=False):
         if not all([self.max_column, self.max_row]):
             if force:
                 self._calculate_dimension()
             else:
-                raise ValueError(
-                    "Worksheet is unsized, use calculate_dimension(force=True)")
+                raise ValueError("Worksheet is unsized, use calculate_dimension(force=True)")
         return '%s%d:%s%d' % (
            get_column_letter(self.min_column), self.min_row,
            get_column_letter(self.max_column), self.max_row
-        )
+       )
 
 
     def _calculate_dimension(self):
@@ -242,41 +158,25 @@ class ReadOnlyWorksheet(object):
             cell = r[-1]
             max_col = max(max_col, cell.column)
 
-        self.max_row = cell.row
-        self.max_column = max_col
+        self._max_row = cell.row
+        self._max_column = max_col
 
 
     @property
     def min_row(self):
         return self._min_row
 
-    @min_row.setter
-    def min_row(self, value):
-        self._min_row = value
-
 
     @property
     def max_row(self):
         return self._max_row
-
-    @max_row.setter
-    def max_row(self, value):
-        self._max_row = value
 
 
     @property
     def min_column(self):
         return self._min_column
 
-    @min_column.setter
-    def min_column(self, value):
-        self._min_column = value
-
 
     @property
     def max_column(self):
         return self._max_column
-
-    @max_column.setter
-    def max_column(self, value):
-        self._max_column = value
