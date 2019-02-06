@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 # Copyright (c) 2010-2019 openpyxl
 import pytest
 
@@ -22,8 +21,8 @@ def test_safe_string(value, result):
 
 @pytest.mark.numpy_required
 def test_numeric_types():
-    from ..numbers import NUMERIC_TYPES, numpy, Decimal, long
-    assert NUMERIC_TYPES == (int, float, long, Decimal, numpy.bool_,
+    from ..numbers import NUMERIC_TYPES, numpy, Decimal
+    assert NUMERIC_TYPES == (int, float, Decimal, numpy.bool_,
                              numpy.floating, numpy.integer)
 
 
