@@ -6,8 +6,6 @@ Enclosing chart object. The various chart types are actually child objects.
 Will probably need to call this indirectly
 """
 
-from openpyxl.compat import unicode
-
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
     Bool,
