@@ -466,8 +466,53 @@ class TestWorksheetParser:
         parser.shared_strings = ["Whatever"] * 10
         parser.parse_row(element)
 
-        assert parser.max_row == 1
-        assert parser.max_column == 5
+        assert parser.row_counter == 1
+        assert parser.col_counter == 5
+
+
+    def test_row_and_cell_without_coordinates(self, WorkSheetParser):
+        parser = WorkSheetParser
+        src = """
+        <row xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <c>
+            <v>2</v>
+          </c>
+          <c>
+            <v>4</v>
+          </c>
+          <c>
+            <v>3</v>
+          </c>
+        </row>
+        """
+        element = fromstring(src)
+        max_row, cells = parser.parse_row(element)
+        expected = [
+            {'column': 1, 'row': 1, 'data_type': 'n', 'value': 2, 'style_id': 0},
+            {'column': 2, 'row': 1, 'data_type': 'n', 'value': 4, 'style_id': 0},
+            {'column': 3, 'row': 1, 'data_type': 'n', 'value': 3, 'style_id': 0},
+        ]
+        for expected_cell, cell in zip(expected, cells):
+            assert expected_cell == cell
+
+
+    def test_second_row_cell_index_without_coordinates(self, WorkSheetParser):
+        parser = WorkSheetParser
+        src = """
+        <row xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+          <c>
+            <v>2</v>
+          </c>
+        </row>
+        """
+        element = fromstring(src)
+        parser.parse_row(element)
+        max_row, cells = parser.parse_row(element)
+        expected = [
+            {'column': 1, 'row': 2, 'data_type': 'n', 'value': 2, 'style_id': 0},
+        ]
+        for expected_cell, cell in zip(expected, cells):
+            assert expected_cell == cell
 
 
     def test_external_hyperlinks(self, WorkSheetParser):
@@ -627,7 +672,7 @@ class TestWorksheetParser:
         el = fromstring(src)
         parser.parse_row_breaks(el)
 
-        assert parser.page_breaks == [expected_pagebreak]
+        assert parser.row_breaks == expected_pagebreak
 
 
     def test_col_break(self, WorkSheetParser):
@@ -643,7 +688,7 @@ class TestWorksheetParser:
         el = fromstring(src)
         parser.parse_col_breaks(el)
 
-        assert parser.page_breaks == [expected_pagebreak]
+        assert parser.col_breaks == expected_pagebreak
 
 
     def test_scenarios(self, WorkSheetParser):
@@ -701,7 +746,7 @@ class TestWorksheetParser:
         parser.source = BytesIO(src)
         for _ in parser.parse():
             pass
-        assert parser.page_breaks == []
+        assert parser.row_breaks == RowBreak()
 
 
 @pytest.fixture
