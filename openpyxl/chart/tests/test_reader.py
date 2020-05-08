@@ -1,13 +1,11 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
-
-from zipfile import ZipFile
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.xml.functions import fromstring
 
+from .. bar_chart import BarChart
 from .. line_chart import LineChart
 from .. axis import NumericAxis, DateAxis
-from .. chartspace import ChartSpace
+from .. chartspace import ChartSpace, ChartContainer
 
 
 def test_read(datadir):
@@ -31,3 +29,21 @@ def test_read(datadir):
     assert chart.x_axis.title is None
 
     assert len(chart.series) == 10
+
+    assert chart.pivotSource.name == "[files.xlsx]PIVOT!PivotTable1"
+    assert len(chart.pivotFormats) == 1
+
+    assert chart.idx_base == 0
+
+
+def test_read_chart_with_no_series():
+    container = ChartContainer()
+    cs = ChartSpace(chart=container)
+    cs.chart.plotArea.barChart = BarChart()
+
+    from ..reader import read_chart
+    chart = read_chart(cs)
+
+    assert isinstance(chart, BarChart)
+    assert len(chart.series) == 0
+    assert chart.idx_base == 0

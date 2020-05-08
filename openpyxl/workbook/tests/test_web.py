@@ -1,4 +1,5 @@
-# Copyright (c) 2010-2015 openpyxl
+# Copyright (c) 2010-2020 openpyxl
+
 import pytest
 
 from openpyxl.xml.functions import fromstring, tostring

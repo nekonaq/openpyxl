@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.xml.functions import (
     Element,
@@ -10,7 +9,7 @@ from openpyxl.xml.functions import (
 
 from openpyxl.utils import (
     column_index_from_string,
-    coordinate_from_string,
+    coordinate_to_tuple,
 )
 
 vmlns = "urn:schemas-microsoft-com:vml"
@@ -51,10 +50,10 @@ class ShapeWriter(object):
 
 
     def add_comment_shape(self, root, idx, coord, height, width):
-        col, row = coordinate_from_string(coord)
+        row, col = coordinate_to_tuple(coord)
         row -= 1
-        column = column_index_from_string(col) - 1
-        shape = _shape_factory(row, column, height, width)
+        col -= 1
+        shape = _shape_factory(row, col, height, width)
 
         shape.set('id', "_x0000_s%04d" % idx)
         root.append(shape)

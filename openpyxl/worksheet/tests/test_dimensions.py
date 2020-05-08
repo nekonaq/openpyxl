@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 import pytest
 
@@ -52,7 +51,6 @@ class TestRowDimension:
     @pytest.mark.parametrize("key, value, expected",
                              [
                                  ('ht', 1, {'ht':'1', 'customHeight':'1'}),
-                                 ('_font_id', 10, {'s':'1', 'customFormat':'1'}),
                                  ('thickBot', True, {'thickBot':'1'}),
                                  ('thickTop', True, {'thickTop':'1'}),
                              ]
@@ -63,7 +61,7 @@ class TestRowDimension:
         assert dict(rd) == expected
 
 
-    def test_row_dimension(self, RowDimension):
+    def test_row_auto_assign(self, RowDimension):
         from ..worksheet import Worksheet
         ws = Worksheet(DummyWorkbook())
         row_info = ws.row_dimensions
@@ -88,7 +86,7 @@ class TestColDimension:
     @pytest.mark.parametrize("key, value, expected",
                              [
                                  ('width', 1, {'width':'1', 'customWidth':'1'}),
-                                 ('bestFit', True, {'bestFit':'1'}),
+                                 ('bestFit', True, {'bestFit':'1', 'width':'13', 'customWidth':'1'}),
                              ]
                              )
     def test_col_dimensions(self, ColumnDimension, key, value, expected):
@@ -106,9 +104,9 @@ class TestColDimension:
 
     def test_col_reindex(self, ColumnDimension):
         cd = ColumnDimension(DummyWorksheet(), index="D")
-        assert dict(cd) == {}
+        assert dict(cd) == {'customWidth': '1', 'width': '13'}
         cd.reindex()
-        assert dict(cd) == {'max': '4', 'min': '4'}
+        assert dict(cd) == {'max': '4', 'min': '4', 'width':'13', 'customWidth':'1'}
 
 
     def test_col_width(self, ColumnDimension):
@@ -132,7 +130,7 @@ class TestColDimension:
         cd.reindex()
         col = cd.to_tree()
         xml = tostring(col)
-        expected = """<col max="1" min="1" style="1" />"""
+        expected = """<col max="1" min="1" style="1" customWidth="1" width="13" />"""
         diff = compare_xml(xml, expected)
         assert diff is None, diff
 
@@ -143,7 +141,7 @@ class TestColDimension:
         cd.reindex()
         col = cd.to_tree()
         xml = tostring(col)
-        expected = """<col max="2" min="2" outlineLevel="1"/>"""
+        expected = """<col max="2" min="2" outlineLevel="1" customWidth="1" width="13"/>"""
         diff = compare_xml(expected, xml)
         assert diff is None, diff
 
@@ -164,6 +162,7 @@ class TestColDimension:
     def test_empty_col(self, ColumnDimension):
         ws = DummyWorksheet()
         cd = ColumnDimension(ws, index="C")
+        cd.width = 0
         cd.reindex()
         assert cd.to_tree() is None
 
@@ -221,3 +220,12 @@ class TestGrouping:
         dh = DimensionHolder(None)
         node = dh.to_tree()
         assert node is None
+
+
+    def test_to_tree(self):
+        from ..worksheet import Worksheet
+        ws = Worksheet(DummyWorkbook())
+        dims = ws.column_dimensions
+        dims['A'].width = 5
+        dims['D']
+        assert dims.to_tree() is not None

@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 """
 This module contains code to translate formulae across cells in a worksheet.
 
@@ -37,7 +35,7 @@ class Translator(object):
     """
     Modifies a formula so that it can be translated from one cell to another.
 
-    `formula`: The unicode string to translate. Must include the leading '='
+    `formula`: The str string to translate. Must include the leading '='
                character.
     `origin`: The cell address (in A1 notation) where this formula was
               defined (excluding the worksheet name).
@@ -135,7 +133,7 @@ class Translator(object):
         return (ws_part + cls.translate_col(match.group(1), cdelta)
                 + cls.translate_row(match.group(2), rdelta))
 
-    def translate_formula(self, dest=None, row=None, col=None):
+    def translate_formula(self, dest=None, row_delta=0, col_delta=0):
         """
         Convert the formula into A1 notation, or as row and column coordinates
 
@@ -143,8 +141,6 @@ class Translator(object):
         whose address is `dest` (no worksheet name).
 
         """
-        if not any([dest, row, col]):
-            raise TypeError("You must provide coordinates for the target")
         tokens = self.get_tokens()
         if not tokens:
             return ""
@@ -158,8 +154,8 @@ class Translator(object):
         # ambiguity exists. (I.18.2.5)
         if dest:
             row, col = coordinate_to_tuple(dest)
-        row_delta = row - self.row
-        col_delta = col - self.col
+            row_delta = row - self.row
+            col_delta = col - self.col
         for token in tokens:
             if (token.type == Token.OPERAND
                 and token.subtype == Token.RANGE):

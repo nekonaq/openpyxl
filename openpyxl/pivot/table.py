@@ -1,3 +1,5 @@
+# Copyright (c) 2010-2020 openpyxl
+
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
     Typed,
@@ -550,7 +552,7 @@ class PageField(Serialisable):
 
     fld = Integer()
     item = Integer(allow_none=True)
-    hier = Integer()
+    hier = Integer(allow_none=True)
     name = String(allow_none=True)
     cap = String(allow_none=True)
     extLst = Typed(expected_type=ExtensionList, allow_none=True)

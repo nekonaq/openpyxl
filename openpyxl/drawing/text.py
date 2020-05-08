@@ -1,7 +1,5 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
-from openpyxl.compat import unicode
 
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
@@ -334,7 +332,7 @@ class ParagraphProperties(Serialisable):
     lvl = Integer(allow_none=True)
     indent = Integer(allow_none=True)
     algn = NoneSet(values=(['l', 'ctr', 'r', 'just', 'justLow', 'dist', 'thaiDist']))
-    defTabSz = Integer(expected_type=Coordinate, allow_none=True)
+    defTabSz = Integer(allow_none=True)
     rtl = Bool(allow_none=True)
     eaLnBrk = Bool(allow_none=True)
     fontAlgn = NoneSet(values=(['auto', 't', 'ctr', 'base', 'b']))
@@ -360,7 +358,7 @@ class ParagraphProperties(Serialisable):
     buFont = Typed(expected_type=Font, allow_none=True)
     buNone = EmptyTag()
     buAutoNum = EmptyTag()
-    buChar = NestedValue(expected_type=unicode, attribute="char", allow_none=True)
+    buChar = NestedValue(expected_type=str, attribute="char", allow_none=True)
     buBlip = NestedValue(expected_type=Blip, attribute="blip", allow_none=True)
 
     __elements__ = ('lnSpc', 'spcBef', 'spcAft', 'tabLst', 'defRPr',
@@ -479,7 +477,7 @@ class RegularTextRun(Serialisable):
 
     rPr = Typed(expected_type=CharacterProperties, allow_none=True)
     properties = Alias("rPr")
-    t = NestedText(expected_type=unicode)
+    t = NestedText(expected_type=str)
     value = Alias("t")
 
     __elements__ = ('rPr', 't')

@@ -1,12 +1,16 @@
+Optimised Modes
+===============
+
+
 Read-only mode
-==============
+--------------
 
 Sometimes, you will need to open or write extremely large XLSX files,
 and the common routines in openpyxl won't be able to handle that load.
 Fortunately, there are two modes that enable you to read and write unlimited
 amounts of data with (near) constant memory consumption.
 
-Introducing :class:`openpyxl.worksheet.read_only.ReadOnlyWorksheet`::
+Introducing :class:`openpyxl.worksheet._read_only.ReadOnlyWorksheet`::
 
     from openpyxl import load_workbook
     wb = load_workbook(filename='large_file.xlsx', read_only=True)
@@ -18,14 +22,14 @@ Introducing :class:`openpyxl.worksheet.read_only.ReadOnlyWorksheet`::
 
 .. warning::
 
-    * :class:`openpyxl.worksheet.read_only.ReadOnlyWorksheet` is read-only
+    * :class:`openpyxl.worksheet._read_only.ReadOnlyWorksheet` is read-only
 
 Cells returned are not regular :class:`openpyxl.cell.cell.Cell` but
-:class:`openpyxl.cell.read_only.ReadOnlyCell`.
+:class:`openpyxl.cell._read_only.ReadOnlyCell`.
 
 
 Worksheet dimensions
---------------------
+++++++++++++++++++++
 
 Read-only mode relies on applications and libraries that created the file
 providing correct information about the worksheets, specifically the used
@@ -35,14 +39,14 @@ You can check the apparent dimensions of a worksheet using
 incorrect, say `A1:A1` then simply resetting the max_row and max_column
 attributes should allow you to work with the file::
 
-    ws.max_row = ws.max_column = None
+    ws.reset_dimensions()
 
 
 Write-only mode
-===============
+---------------
 
 Here again, the regular :class:`openpyxl.worksheet.worksheet.Worksheet` has been replaced
-by a faster alternative, the :class:`openpyxl.writer.write_only.WriteOnlyWorksheet`.
+by a faster alternative, the :class:`openpyxl.worksheet._write_only.WriteOnlyWorksheet`.
 When you want to dump large amounts of data make sure you have `lxml` installed.
 
 .. :: doctest
@@ -58,14 +62,14 @@ When you want to dump large amounts of data make sure you have `lxml` installed.
 >>> # save the file
 >>> wb.save('new_big_file.xlsx') # doctest: +SKIP
 
-If you want to have cells with styles or comments then use a :func:`openpyxl.worksheet.write_only.WriteOnlyCell`
+If you want to have cells with styles or comments then use a :func:`openpyxl.cell.WriteOnlyCell`
 
 .. :: doctest
 
 >>> from openpyxl import Workbook
 >>> wb = Workbook(write_only = True)
 >>> ws = wb.create_sheet()
->>> from openpyxl.worksheet.write_only import WriteOnlyCell
+>>> from openpyxl.cell import WriteOnlyCell
 >>> from openpyxl.comments import Comment
 >>> from openpyxl.styles import Font
 >>> cell = WriteOnlyCell(ws, value="hello world")

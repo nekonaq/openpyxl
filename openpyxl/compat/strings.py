@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from datetime import datetime
 from math import isnan, isinf
@@ -8,21 +7,6 @@ import sys
 VER = sys.version_info
 
 from .numbers import NUMERIC_TYPES
-
-if VER[0] >= 3:
-    basestring = str
-    unicode = str
-    from io import BufferedReader
-    file = BufferedReader
-    from io import BufferedRandom
-    tempfile = BufferedRandom
-    bytes = bytes
-else:
-    basestring = basestring
-    unicode = unicode
-    file = file
-    tempfile = file
-    bytes = str
 
 
 def safe_string(value):
@@ -36,15 +20,6 @@ def safe_string(value):
         value = "none"
     elif isinstance(value, datetime):
         value = value.isoformat()
-    elif not isinstance(value, basestring):
+    elif not isinstance(value, str):
         value = str(value)
     return value
-
-
-def safe_repr(value):
-    """
-    Safely convert unicode to ASCII for Python 2
-    """
-    if VER[0] == 3:
-        return value
-    return value.encode("ascii", 'backslashreplace')

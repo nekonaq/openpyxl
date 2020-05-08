@@ -1,13 +1,10 @@
+# Copyright (c) 2010-2020 openpyxl
+
 import pytest
 
 from io import BytesIO
 from ..functions import fromstring, iterparse
 
-
-def test_safe_iterator_none():
-    from .. functions import safe_iterator
-    seq = safe_iterator(None)
-    assert seq == []
 
 
 @pytest.mark.parametrize("xml, tag",
@@ -46,7 +43,7 @@ vulnerable_xml_strings = (
         <!DOCTYPE bomb [
         <!ENTITY a "{loads_of_bs}">
         ]>
-        <foo>&a;&a;&a</foo>""",
+        <foo>&a;&a;&a;</foo>""",
 )
 
 
@@ -65,3 +62,11 @@ def test_iterparse(xml_input):
     with pytest.raises(DefusedXmlException):
         f = BytesIO(xml_input)
         list(iterparse(f))
+
+
+@pytest.mark.lxml_required
+@pytest.mark.parametrize("xml_input", vulnerable_xml_strings)
+def test_iterparse(xml_input):
+    f = BytesIO(xml_input)
+    with pytest.raises(ValueError):
+        fromstring(f)

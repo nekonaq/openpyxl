@@ -1,7 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
-
-from openpyxl.compat import basestring
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
@@ -19,7 +16,9 @@ from .shapes import GraphicalProperties
 from openpyxl.drawing.text import (
     Paragraph,
     RegularTextRun,
-    LineBreak
+    LineBreak,
+    ParagraphProperties,
+    CharacterProperties,
 )
 
 
@@ -58,7 +57,9 @@ class Title(Serialisable):
 
 def title_maker(text):
     title = Title()
-    paras = [Paragraph(r=[RegularTextRun(t=s)]) for s in text.split("\n")]
+    paraprops = ParagraphProperties()
+    paraprops.defRPr = CharacterProperties()
+    paras = [Paragraph(r=[RegularTextRun(t=s)], pPr=paraprops) for s in text.split("\n")]
 
     title.tx.rich.paragraphs = paras
     return title
@@ -70,6 +71,6 @@ class TitleDescriptor(Typed):
     allow_none = True
 
     def __set__(self, instance, value):
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             value = title_maker(value)
         super(TitleDescriptor, self).__set__(instance, value)

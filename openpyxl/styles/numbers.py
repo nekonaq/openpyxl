@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 import re
 
@@ -52,6 +51,7 @@ BUILTIN_FORMATS = {
     48: '##0.0E+0',
     49: '@', }
 
+BUILTIN_FORMATS_MAX_SIZE = 164
 BUILTIN_FORMATS_REVERSE = dict(
         [(value, key) for key, value in BUILTIN_FORMATS.items()])
 
@@ -135,7 +135,11 @@ def is_builtin(fmt):
 
 def builtin_format_code(index):
     """Return one of the standard format codes by index."""
-    return BUILTIN_FORMATS[index]
+    try:
+        fmt = BUILTIN_FORMATS[index]
+    except KeyError:
+        fmt = None
+    return fmt
 
 
 def builtin_format_id(fmt):

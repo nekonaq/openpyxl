@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from collections import defaultdict
 from itertools import chain
@@ -16,16 +15,12 @@ from openpyxl.descriptors import (
     Convertible,
 )
 from openpyxl.descriptors.nested import NestedText
-from openpyxl.compat import (
-    safe_string,
-    unicode,
-)
+
 from openpyxl.utils import (
     rows_from_range,
     coordinate_to_tuple,
     get_column_letter,
 )
-from openpyxl.cell import Cell
 
 
 def collapse_cell_addresses(cells, input_ranges=()):
@@ -67,10 +62,10 @@ def expand_cell_ranges(range_string):
     Reverse of collapse_cell_addresses
     Eg. converts "A1:A2 B1:B2" to (A1, A2, B1, B2)
     """
-    cells = []
-    for rs in range_string.split():
-        cells.extend(rows_from_range(rs))
-    return set(chain.from_iterable(cells))
+    # expand ranges to rows and then flatten
+    rows = (rows_from_range(rs) for rs in range_string.split()) # list of rows
+    cells = (chain(*row) for row in rows) # flatten rows
+    return set(chain(*cells))
 
 
 from .cell_range import MultiCellRange
@@ -96,8 +91,8 @@ class DataValidation(Serialisable):
     error = String(allow_none = True)
     promptTitle = String(allow_none = True)
     prompt = String(allow_none = True)
-    formula1 = NestedText(allow_none=True, expected_type=unicode)
-    formula2 = NestedText(allow_none=True, expected_type=unicode)
+    formula1 = NestedText(allow_none=True, expected_type=str)
+    formula2 = NestedText(allow_none=True, expected_type=str)
 
     type = NoneSet(values=("whole", "decimal", "list", "date", "time",
                            "textLength", "custom"))

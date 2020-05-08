@@ -1,10 +1,16 @@
+from __future__ import absolute_import
+# Copyright (c) 2010-2020 openpyxl
+
 from io import BytesIO
+import os
 from string import ascii_letters
 from zipfile import ZipFile
 
 import pytest
 
+from openpyxl import load_workbook
 from openpyxl.chart import BarChart
+from openpyxl.comments import Comment
 from openpyxl.drawing.spreadsheet_drawing import SpreadsheetDrawing
 from openpyxl import Workbook
 from openpyxl.worksheet.table import Table
@@ -40,7 +46,6 @@ def test_tables(ExcelWriter, archive):
     ws._rels = []
     t = Table(displayName="Table1", ref="A1:D10")
     ws.add_table(t)
-
 
     writer = ExcelWriter(wb, archive)
     writer._write_worksheets()
@@ -109,7 +114,7 @@ def test_chartsheet(ExcelWriter, archive):
 
 
 def test_comment(ExcelWriter, archive):
-    from openpyxl.comments import Comment
+
     wb = Workbook()
     ws = wb.active
     ws['B5'].comment = Comment("A comment", "The Author")
@@ -120,6 +125,18 @@ def test_comment(ExcelWriter, archive):
     assert archive.namelist() == ['xl/comments/comment1.xml', 'xl/drawings/commentsDrawing1.vml']
     assert '/xl/comments/comment1.xml' in writer.manifest.filenames
     assert ws.legacy_drawing == 'xl/drawings/commentsDrawing1.vml'
+
+
+def test_duplicate_comment(ExcelWriter, archive):
+
+    wb = Workbook()
+    ws = wb.active
+    ws['B5'].comment = Comment("A comment", "The Author")
+
+    writer = ExcelWriter(wb, archive)
+    writer.write_worksheet(ws)
+    writer.write_worksheet(ws)
+    assert len(ws._comments) == 1
 
 
 def test_merge_vba(ExcelWriter, archive, datadir):
@@ -146,7 +163,7 @@ def test_merge_vba(ExcelWriter, archive, datadir):
     ])
 
 
-def test_duplicate_chart(ExcelWriter, archive, Workbook):
+def test_duplicate_chart(ExcelWriter, archive):
     from openpyxl.chart import PieChart
     pc = PieChart()
     wb = Workbook()
@@ -157,24 +174,18 @@ def test_duplicate_chart(ExcelWriter, archive, Workbook):
         writer._write_charts()
 
 
-def test_save():
-    from tempfile import NamedTemporaryFile
-    filename = NamedTemporaryFile(delete=False)
-    from openpyxl.workbook import Workbook
-    from ..excel import save_dump
-    wb = Workbook(write_only=True)
-    save_dump(wb, filename)
+def test_write_empty_workbook(tmpdir):
+    tmpdir.chdir()
+    wb = Workbook()
+    from ..excel import save_workbook
+    dest_filename = 'empty_book.xlsx'
+    save_workbook(wb, dest_filename)
+    assert os.path.isfile(dest_filename)
 
-    archive = ZipFile(filename)
-    assert archive.namelist() == [
-        '_rels/.rels',
-        'docProps/app.xml',
-        'docProps/core.xml',
-        'xl/theme/theme1.xml',
-        'xl/worksheets/sheet1.xml',
-        'xl/sharedStrings.xml',
-        'xl/styles.xml',
-        'xl/workbook.xml',
-        'xl/_rels/workbook.xml.rels',
-        '[Content_Types].xml'
-    ]
+
+def test_write_virtual_workbook():
+    old_wb = Workbook()
+    from ..excel import save_virtual_workbook
+    saved_wb = save_virtual_workbook(old_wb)
+    new_wb = load_workbook(BytesIO(saved_wb))
+    assert new_wb

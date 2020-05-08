@@ -1,10 +1,9 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 import pytest
 
 # compatibility imports
-from openpyxl.compat import unicode
+
 
 # package imports
 from openpyxl.styles import numbers
@@ -31,16 +30,3 @@ def test_read_no_theme(datadir):
     datadir.join("genuine").chdir()
     wb = load_workbook('libreoffice_nrt.xlsx')
     assert wb
-
-
-@pytest.mark.parametrize("guess_types, dtype",
-                         (
-                             (True, float),
-                             (False, unicode),
-                         )
-                        )
-def test_guess_types(datadir, guess_types, dtype):
-    datadir.join("genuine").chdir()
-    wb = load_workbook('guess_types.xlsx', guess_types=guess_types)
-    ws = wb.active
-    assert isinstance(ws['D2'].value, dtype)

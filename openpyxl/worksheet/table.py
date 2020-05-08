@@ -1,14 +1,10 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
     Descriptor,
     Alias,
     Typed,
-    Set,
-    Float,
-    DateTime,
     Bool,
     Integer,
     NoneSet,
@@ -207,7 +203,7 @@ class Table(Serialisable):
     tagname = "table"
 
     id = Integer()
-    name = TableNameDescriptor(allow_none=True)
+    name = String(allow_none=True)
     displayName = TableNameDescriptor()
     comment = String(allow_none=True)
     ref = CellRange()

@@ -25,15 +25,10 @@ try:
 except IOError:
     README = ''
 
-try:
-    from importlib.util import module_from_spec, spec_from_file_location
-    spec = spec_from_file_location("constants", "./openpyxl/_constants.py")
-    constants = module_from_spec(spec)
-    spec.loader.exec_module(constants)
-except ImportError:
-    # python2.7
-    import imp
-    constants = imp.load_source("constants", "./openpyxl/_constants.py")
+from importlib.util import module_from_spec, spec_from_file_location
+spec = spec_from_file_location("constants", "./openpyxl/_constants.py")
+constants = module_from_spec(spec)
+spec.loader.exec_module(constants)
 
 __author__ = constants.__author__
 __author_email__ = constants.__author_email__
@@ -45,8 +40,8 @@ __version__ = constants.__version__
 
 setup(
     name='openpyxl',
-    packages=find_packages(
-        exclude=["*.tests", "*.test_.*", "test_.*", "tests", "develop"]
+    packages=find_packages(".",
+        exclude=["*.tests", "scratchpad*"]
         ),
     package_dir={},
     # metadata
@@ -57,7 +52,7 @@ setup(
     author_email=__author_email__,
     url=__url__,
     license=__license__,
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
+    python_requires=">=3.6, ",
     install_requires=[
         'jdcal', 'et_xmlfile',
         ],
@@ -73,10 +68,9 @@ setup(
                  'Operating System :: POSIX',
                  'License :: OSI Approved :: MIT License',
                  'Programming Language :: Python',
-                 'Programming Language :: Python :: 2.7',
-                 'Programming Language :: Python :: 3.4',
-                 'Programming Language :: Python :: 3.5',
                  'Programming Language :: Python :: 3.6',
                  'Programming Language :: Python :: 3.7',
+                 'Programming Language :: Python :: 3.8',
+                 'Programming Language :: Python :: 3.9',
                  ],
     )

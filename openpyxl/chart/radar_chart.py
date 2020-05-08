@@ -1,3 +1,5 @@
+# Copyright (c) 2010-2020 openpyxl
+
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
     Sequence,

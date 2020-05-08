@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 import pytest
 
@@ -72,7 +71,7 @@ class TestWorksheetCopy:
         ws1.merge_cells('A10:A11')
         ws1.merge_cells('F20:J23')
         copier.copy_worksheet()
-        assert ws1.merged_cell_ranges == ws2.merged_cell_ranges
+        assert ws1.merged_cells.ranges == ws2.merged_cells.ranges
 
 
     def test_cell_copy_value(self, copier):
@@ -128,6 +127,30 @@ class TestWorksheetCopy:
         copier._copy_dimensions()
         cd2 = ws2.column_dimensions['D']
         assert cd2.width == 25
+
+
+    def test_copy_page_margins(self, copier):
+        ws1 = copier.source
+        ws1.page_margins.top = 3
+        ws2 = copier.target
+        copier.copy_worksheet()
+        assert ws1.page_margins.top == ws2.page_margins.top
+
+
+    def test_copy_page_setup(self, copier):
+        ws1 = copier.source
+        ws1.page_setup.draft = True
+        ws2 = copier.target
+        copier.copy_worksheet()
+        assert ws1.page_setup.draft == ws1.page_setup.draft
+
+
+    def test_copy_print_options(self, copier):
+        ws1 = copier.source
+        ws1.print_options.horizontalCentered = True
+        ws2 = copier.target
+        copier.copy_worksheet()
+        assert ws1.print_options.horizontalCentered == ws2.print_options.horizontalCentered
 
 
 def test_copy_worksheet(datadir, WorksheetCopy):

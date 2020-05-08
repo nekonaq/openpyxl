@@ -70,7 +70,7 @@ Cell Styles
 
 Cell styles are shared between objects and once they have been assigned they
 cannot be changed. This stops unwanted side-effects such as changing the
-style for lots of cells when instead of only one.
+style for lots of cells when only one changes.
 
 .. :: doctest
 
@@ -160,12 +160,34 @@ yourself. This is a restriction of the file format::
 Styling Merged Cells
 --------------------
 
-Sometimes you want to format a range of cells as if they were a single
-object. Excel pretends that this is possible by merging cells (deleting all
-but the top-left cell) and then recreating them in order to apply
-pseudo-styles.
+The merged cell behaves similarly to other cell ojects.
+Its value and format is defined in its top-left cell.
+In order to change the border of the whole merged cell,
+change the border of its top-left cell.
+The formatting is generated for the purpose of writing.
 
-.. literalinclude:: format_merged_cells.py
+.. :: doctest
+
+>>> from openpyxl.styles import Border, Side, PatternFill, Font, GradientFill, Alignment
+>>> from openpyxl import Workbook
+>>>
+>>> wb = Workbook()
+>>> ws = wb.active
+>>> ws.merge_cells('B2:F4')
+>>>
+>>> top_left_cell = ws['B2']
+>>> top_left_cell.value = "My Cell"
+>>>
+>>> thin = Side(border_style="thin", color="000000")
+>>> double = Side(border_style="double", color="ff0000")
+>>>
+>>> top_left_cell.border = Border(top=double, left=thin, right=thin, bottom=double)
+>>> top_left_cell.fill = PatternFill("solid", fgColor="DDDDDD")
+>>> top_left_cell.fill = fill = GradientFill(stop=("000000", "FFFFFF"))
+>>> top_left_cell.font  = Font(b=True, color="FF0000")
+>>> top_left_cell.alignment = Alignment(horizontal="center", vertical="center")
+>>>
+>>> wb.save("styled.xlsx")
 
 
 Edit Page Setup
@@ -213,7 +235,7 @@ But named styles will also be registered automatically the first time they are a
 
 >>> ws['A1'].style = highlight
 
-Once registered assign the style using just the name:
+Once registered, assign the style using just the name:
 
 >>> ws['D5'].style = 'highlight'
 

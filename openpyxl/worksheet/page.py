@@ -1,14 +1,11 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
     Float,
     Bool,
     Integer,
-    String,
     NoneSet,
-    Alias,
     )
 from openpyxl.descriptors.excel import UniversalMeasure, Relation
 
@@ -82,6 +79,13 @@ class PrintPageSetup(Serialisable):
         self.id = id
 
 
+    def __bool__(self):
+        return bool(dict(self))
+
+
+    __nonzero__ = __bool__
+
+
     @property
     def sheet_properties(self):
         """
@@ -138,6 +142,13 @@ class PrintOptions(Serialisable):
         self.headings = headings
         self.gridLines = gridLines
         self.gridLinesSet = gridLinesSet
+
+
+    def __bool__(self):
+        return bool(dict(self))
+
+
+    __nonzero__ = __bool__
 
 
 class PageMargins(Serialisable):

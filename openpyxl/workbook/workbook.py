@@ -1,13 +1,12 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 """Workbook is the top-level container for all document information."""
 from copy import copy
 
-from openpyxl.compat import deprecated, long
-from openpyxl.worksheet import Worksheet
-from openpyxl.worksheet.read_only import ReadOnlyWorksheet
-from openpyxl.worksheet.write_only import WriteOnlyWorksheet
+from openpyxl.compat import deprecated
+from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.worksheet._read_only import ReadOnlyWorksheet
+from openpyxl.worksheet._write_only import WriteOnlyWorksheet
 from openpyxl.worksheet.copier import WorksheetCopy
 
 from openpyxl.utils import quote_sheetname
@@ -15,7 +14,7 @@ from openpyxl.utils.indexed_list import IndexedList
 from openpyxl.utils.datetime  import CALENDAR_WINDOWS_1900
 from openpyxl.utils.exceptions import ReadOnlyWorkbookException
 
-from openpyxl.writer.excel import save_workbook, save_dump
+from openpyxl.writer.excel import save_workbook
 
 from openpyxl.styles.cell_style import StyleArray
 from openpyxl.styles.named_styles import NamedStyle
@@ -46,14 +45,13 @@ from openpyxl.xml.constants import (
     XLTX
 )
 
-INTEGER_TYPES = (int, long)
+INTEGER_TYPES = (int,)
 
 class Workbook(object):
     """Workbook is the container for all other parts of the document."""
 
     _read_only = False
     _data_only = False
-    _keep_links = True
     template = False
     path = "/xl/workbook.xml"
 
@@ -76,7 +74,6 @@ class Workbook(object):
         self.loaded_theme = None
         self.vba_archive = None
         self.is_template = False
-        self._differential_styles = DifferentialStyleList()
         self.code_name = None
         self.epoch = CALENDAR_WINDOWS_1900
         self.encoding = "utf-8"
@@ -106,6 +103,7 @@ class Workbook(object):
         self._fills.add(DEFAULT_GRAY_FILL)
 
         self._number_formats = IndexedList()
+        self._date_formats = {}
 
         self._protections = IndexedList([Protection()])
 
@@ -114,6 +112,7 @@ class Workbook(object):
         self._named_styles = NamedStyleList()
         self.add_named_style(NamedStyle(font=copy(DEFAULT_FONT), builtinId=0))
         self._table_styles = TableStyleList()
+        self._differential_styles = DifferentialStyleList()
 
 
     @property
@@ -127,15 +126,6 @@ class Workbook(object):
     @property
     def write_only(self):
         return self.__write_only
-
-    @property
-    def keep_links(self):
-        return self._keep_links
-
-    @deprecated("Use the .active property")
-    def get_active_sheet(self):
-        """Returns the current active sheet."""
-        return self.active
 
 
     @property
@@ -178,7 +168,7 @@ class Workbook(object):
         """Create a worksheet (at an optional index).
 
         :param title: optional title of the sheet
-        :type title: unicode
+        :type title: str
         :param index: optional position at which the sheet will be inserted
         :type index: int
 
@@ -208,6 +198,18 @@ class Workbook(object):
             self._sheets.append(sheet)
         else:
             self._sheets.insert(index, sheet)
+
+
+    def move_sheet(self, sheet, offset=0):
+        """
+        Move a sheet or sheetname
+        """
+        if not isinstance(sheet, Worksheet):
+            sheet = self[sheet]
+        idx = self._sheets.index(sheet)
+        del self._sheets[idx]
+        new_pos = idx + offset
+        self._sheets.insert(new_pos, sheet)
 
 
     def remove(self, worksheet):
@@ -245,7 +247,7 @@ class Workbook(object):
         return self[name]
 
     def __contains__(self, key):
-        return key in set(self.sheetnames)
+        return key in self.sheetnames
 
 
     def index(self, worksheet):
@@ -385,10 +387,9 @@ class Workbook(object):
         """
         if self.read_only:
             raise TypeError("""Workbook is read-only""")
-        if self.write_only:
-            save_dump(self, filename)
-        else:
-            save_workbook(self, filename)
+        if self.write_only and not self.worksheets:
+            self.create_sheet()
+        save_workbook(self, filename)
 
 
     @property

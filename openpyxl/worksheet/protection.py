@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.descriptors import (
     Bool,
@@ -9,7 +8,6 @@ from openpyxl.descriptors import (
 )
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors.excel import (
-    HexBinary,
     Base64Binary,
 )
 from openpyxl.utils.protection import hash_password

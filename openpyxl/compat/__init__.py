@@ -1,34 +1,7 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
-
-from .strings import (
-    basestring,
-    unicode,
-    bytes,
-    file,
-    tempfile,
-    safe_string,
-    safe_repr,
-    )
-from .numbers import long, NUMERIC_TYPES
-
-
-try:
-    range = xrange
-except NameError:
-    range = range
-
-try:
-    from itertools import accumulate
-except ImportError:
-    from .accumulate import accumulate
-
-try:
-    from itertools import izip as zip
-except ImportError:
-    zip = zip
-
+from .numbers import NUMERIC_TYPES
+from .strings import safe_string
 
 import warnings
 from functools import wraps

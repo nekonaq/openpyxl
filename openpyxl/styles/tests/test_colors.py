@@ -1,3 +1,5 @@
+# Copyright (c) 2010-2020 openpyxl
+
 from openpyxl.styles.colors import Color
 import pytest
 

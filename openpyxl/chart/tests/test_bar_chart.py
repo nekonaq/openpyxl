@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 import pytest
 
@@ -155,6 +154,7 @@ class TestBarChart3D:
 
     def test_ctor(self, BarChart3D):
         bc = BarChart3D()
+        assert hasattr(bc.view3D, 'rotX')
         xml = tostring(bc.to_tree())
         expected = """
         <bar3DChart>

@@ -1,9 +1,7 @@
-from __future__ import absolute_import, unicode_literals
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from copy import copy
 
-from openpyxl.compat.strings import safe_repr
 from openpyxl.descriptors import Strict
 from openpyxl.descriptors import MinMax, Sequence
 from openpyxl.descriptors.serialisable import Serialisable
@@ -49,9 +47,9 @@ class CellRange(Serialisable):
     def __init__(self, range_string=None, min_col=None, min_row=None,
                  max_col=None, max_row=None, title=None):
         if range_string is not None:
-            try:
+            if "!" in range_string:
                 title, (min_col, min_row, max_col, max_row) = range_to_tuple(range_string)
-            except ValueError:
+            else:
                 min_col, min_row, max_col, max_row = range_boundaries(range_string)
 
         self.min_col = min_col
@@ -93,6 +91,23 @@ class CellRange(Serialisable):
             max_row=self.max_row
         )
 
+    @property
+    def rows(self):
+        """
+        Return cell coordinates as rows
+        """
+        for row in range(self.min_row, self.max_row+1):
+            yield [(row, col) for col in range(self.min_col, self.max_col+1)]
+
+
+    @property
+    def cols(self):
+        """
+        Return cell coordinates as columns
+        """
+        for col in range(self.min_col, self.max_col+1):
+            yield [(row, col) for row in range(self.min_row, self.max_row+1)]
+
 
     def _check_title(self, other):
         """
@@ -111,23 +126,16 @@ class CellRange(Serialisable):
         fmt = u"<{cls} {coord}>"
         if self.title:
             fmt = u"<{cls} {title!r}!{coord}>"
-        return safe_repr(fmt.format(cls=self.__class__.__name__, title=self.title, coord=self.coord))
+        return fmt.format(cls=self.__class__.__name__, title=self.title, coord=self.coord)
 
 
-    def _get_range_string(self):
+    def __str__(self):
         fmt = "{coord}"
         title = self.title
         if title:
             fmt = u"{title}!{coord}"
             title = quote_sheetname(title)
         return fmt.format(title=title, coord=self.coord)
-
-    __unicode__ = _get_range_string
-
-
-    def __str__(self):
-        coord = self._get_range_string()
-        return safe_repr(coord)
 
 
     def __copy__(self):
@@ -138,7 +146,7 @@ class CellRange(Serialisable):
 
     def shift(self, col_shift=0, row_shift=0):
         """
-        Shift the range according to the shift values (*col_shift*, *row_shift*).
+        Shift the focus of the range according to the shift values (*col_shift*, *row_shift*).
 
         :type col_shift: int
         :param col_shift: number of columns to be moved by, can be negative
@@ -324,6 +332,17 @@ class CellRange(Serialisable):
     __or__ = union
 
 
+    def __iter__(self):
+        """
+        For use as a dictionary elsewhere in the library.
+        """
+        for x in self.__attrs__:
+            if x == "title":
+                continue
+            v = getattr(self, x)
+            yield x, v
+
+
     def expand(self, right=0, down=0, left=0, up=0):
         """
         Expand the range by the dimensions provided.
@@ -370,6 +389,30 @@ class CellRange(Serialisable):
         return {'columns':cols, 'rows':rows}
 
 
+    @property
+    def top(self):
+        """A list of cell coordinates that comprise the top of the range"""
+        return [(self.min_row, col) for col in range(self.min_col, self.max_col+1)]
+
+
+    @property
+    def bottom(self):
+        """A list of cell coordinates that comprise the bottom of the range"""
+        return [(self.max_row, col) for col in range(self.min_col, self.max_col+1)]
+
+
+    @property
+    def left(self):
+        """A list of cell coordinates that comprise the left-side of the range"""
+        return [(row, self.min_col) for row in range(self.min_row, self.max_row+1)]
+
+
+    @property
+    def right(self):
+        """A list of cell coordinates that comprise the right-side of the range"""
+        return [(row, self.max_col) for row in range(self.min_row, self.max_row+1)]
+
+
 class MultiCellRange(Strict):
 
 
@@ -398,7 +441,7 @@ class MultiCellRange(Strict):
         ranges = u" ".join([str(r) for r in self.ranges])
         return ranges
 
-    __unicode__ = __str__
+    __str__ = __str__
 
 
     def add(self, coord):

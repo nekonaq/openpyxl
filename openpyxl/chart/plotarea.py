@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
-    Sequence,
     Typed,
     Alias,
 )
@@ -16,13 +14,9 @@ from openpyxl.descriptors.sequence import (
 )
 from openpyxl.descriptors.nested import (
     NestedBool,
-    NestedNoneSet,
-    NestedInteger,
-    NestedString,
-    NestedMinMax,
-    NestedText,
 )
 
+from ._3d import _3DBase
 from .area_chart import AreaChart, AreaChart3D
 from .bar_chart import BarChart, BarChart3D
 from .bubble_chart import BubbleChart
@@ -131,7 +125,7 @@ class PlotArea(Serialisable):
 
 
     def to_tree(self, tagname=None, idx=None, namespace=None):
-        axIds = set((ax.axId for ax in self._axes))
+        axIds = {ax.axId for ax in self._axes}
         for chart in self._charts:
             for id, axis in chart._axes.items():
                 if id not in axIds:
@@ -146,16 +140,18 @@ class PlotArea(Serialisable):
         self = super(PlotArea, cls).from_tree(node)
         axes = dict((axis.axId, axis) for axis in self._axes)
         for chart in self._charts:
-            if isinstance(chart, ScatterChart):
+            if isinstance(chart, (ScatterChart, BubbleChart)):
                 x, y = (axes[axId] for axId in chart.axId)
                 chart.x_axis = x
                 chart.y_axis = y
                 continue
 
             for axId in chart.axId:
-                if not axId:
+                axis = axes.get(axId)
+                if axis is None and isinstance(chart, _3DBase):
+                    # Series Axis can be optional
+                    chart.z_axis = None
                     continue
-                axis = axes[axId]
                 if axis.tagname in ("catAx", "dateAx"):
                     chart.x_axis = axis
                 elif axis.tagname == "valAx":

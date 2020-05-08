@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 import pytest
 
@@ -121,7 +120,18 @@ class TestPlotArea:
         assert chart.y_axis.axId == 211330000
 
 
-    def test_read_scatter_chart(self, PlotArea, datadir):
+    def test_read_bubble_chart(self, PlotArea, datadir):
+        datadir.chdir()
+        with open("bubblechart_plot_area.xml", "rb") as src:
+            tree = fromstring(src.read())
+        plot = PlotArea.from_tree(tree)
+        chart = plot._charts[0]
+        assert chart.axId == [196911488, 196913408]
+        assert chart.x_axis.axId == 196911488
+        assert chart.y_axis.axId == 196913408
+
+
+    def test_read_surface_chart_3d(self, PlotArea, datadir):
         datadir.chdir()
         with open("3D_plotarea.xml", "rb") as src:
             tree = fromstring(src.read())
@@ -129,6 +139,31 @@ class TestPlotArea:
         chart = plot._charts[0]
         assert chart.axId == [10, 100, 1000]
         assert chart.tagname == "surface3DChart"
+
+
+    def test_read_bar_chart_3d(self, PlotArea, datadir):
+        datadir.chdir()
+        with open("3D_bar_chart.xml", "rb") as src:
+            tree = fromstring(src.read())
+        plot = PlotArea.from_tree(tree)
+        chart = plot._charts[0]
+        assert chart.axId == [203780744, 203656728, 0]
+        assert chart.tagname == "bar3DChart"
+        assert chart.z_axis.crossAx == 203780744
+
+
+    def test_read_bar_chart_3d_no_series_axis(self, PlotArea, datadir):
+        datadir.chdir()
+        with open("3D_bar_chart.xml", "rb") as src:
+            tree = fromstring(src.read())
+        s = tree.find("serAx")
+        tree.remove(s)
+
+        plot = PlotArea.from_tree(tree)
+        chart = plot._charts[0]
+        assert chart.axId == [203780744, 203656728, 0]
+        assert chart.tagname == "bar3DChart"
+        assert chart.z_axis is None
 
 
 @pytest.fixture

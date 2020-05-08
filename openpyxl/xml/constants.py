@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 
 """Constants for fixed paths in a file and xml namespace urls."""
@@ -36,6 +35,8 @@ ARC_SHARED_STRINGS = PACKAGE_XL + '/sharedStrings.xml'
 ARC_CUSTOM_UI = 'customUI/customUI.xml'
 
 ## namespaces
+# XML
+XML_NS = "http://www.w3.org/XML/1998/namespace"
 # Dublin Core
 DCORE_NS = 'http://purl.org/dc/elements/1.1/'
 DCTERMS_NS = 'http://purl.org/dc/terms/'
@@ -114,3 +115,8 @@ EXT_TYPES = {
     '{3A4CF648-6AED-40f4-86FF-DC5316D8AED3}': 'Slicer List',
     '{7E03D99C-DC04-49d9-9315-930204A7B6E9}': 'Timeline Ref',
 }
+
+# Objects related to macros that we preserve
+CTRL = "application/vnd.ms-excel.controlproperties+xml"
+ACTIVEX = "application/vnd.ms-office.activeX+xml"
+VBA = "application/vnd.ms-office.vbaProject"

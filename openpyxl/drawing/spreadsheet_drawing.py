@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
@@ -221,7 +220,7 @@ def _check_anchor(obj):
     """
     anchor = obj.anchor
     if not isinstance(anchor, _AnchorBase):
-        row, col = coordinate_to_tuple(anchor)
+        row, col = coordinate_to_tuple(anchor.upper())
         anchor = OneCellAnchor()
         anchor._from.row = row -1
         anchor._from.col = col -1
@@ -309,7 +308,7 @@ class SpreadsheetDrawing(Serialisable):
 
 
     def _chart_frame(self, idx):
-        chart_rel = ChartRelation("rId%s" % idx)
+        chart_rel = ChartRelation(f"rId{idx}")
         frame = GraphicFrame()
         nv = frame.nvGraphicFramePr.cNvPr
         nv.id = idx

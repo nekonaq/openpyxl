@@ -1,11 +1,196 @@
-2.5.13 (unreleased)
+3.0.4 (unreleased)
+==================
+
+* `#1455 <https://bitbucket.org/openpyxl/openpyxl/issues/1455>`_ Read support for Bubble Charts.
+
+
+3.0.3 (2020-01-20)
+==================
+
+
+Bugfixes
+--------
+
+* `#1260 <https://bitbucket.org/openpyxl/openpyxl/issues/1260>`_ Exception when handling merged cells with hyperlinks
+* `#1373 <https://bitbucket.org/openpyxl/openpyxl/issues/1373>`_ Problems when both lxml and defusedxml are installed
+* `#1385 <https://bitbucket.org/openpyxl/openpyxl/issues/1385>`_ CFVO with incorrect values cannot be processed
+
+
+3.0.2 (2019-11-25)
+==================
+
+
+Bug fixes
+---------
+
+* `#1267 <https://bitbucket.org/openpyxl/openpyxl/issues/1267>`_ DeprecationError if both defusedxml and lxml are installed
+* `#1345 <https://bitbucket.org/openpyxl/openpyxl/issues/1345>`_ ws._current_row is higher than ws.max_row
+* `#1365 <https://bitbucket.org/openpyxl/openpyxl/issues/1365>`_ Border bottom style is not optional when it should be
+* `#1367 <https://bitbucket.org/openpyxl/openpyxl/issues/1367>`_ Empty cells in read-only, values-only mode are sometimes returned as ReadOnlyCells
+* `#1368 <https://bitbucket.org/openpyxl/openpyxl/issues/1368>`_ Cannot add page breaks to existing worksheets if none exist already
+
+
+Pull Requests
+-------------
+
+* `PR359 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/359/>`_ Improvements to the documentation
+
+
+3.0.1 (2019-11-14)
+==================
+
+Bugfixes
+--------
+
+* `#1250 <https://bitbucket.org/openpyxl/openpyxl/issues/1250>`_ Cannot read empty charts.
+
+
+Pull Requests
+-------------
+
+* `PR344 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/354/>`_ Fix for #1250
+* `PR352 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/354/>`_ TableStyleElement is a sequence
+
+
+3.0.0 (2019-09-25)
+==================
+
+Python 3.6+ only release
+------------------------
+
+
+2.6.4 (2019-09-25)
+==================
+
+
+Final release for Python 2.7 and 3.5
+------------------------------------
+
+Bugfixes
+--------
+
+* ` #1330 <https://bitbucket.org/openpyxl/openpyxl/issues/1330>`_ Cannot save workbooks with comments more than once.
+
+
+2.6.3 (2019-08-19)
+==================
+
+
+Bugfixes
+--------
+
+* `#1237 <https://bitbucket.org/openpyxl/openpyxl/issues/1237>`_ Fix 3D charts.
+* `#1290 <https://bitbucket.org/openpyxl/openpyxl/issues/1290>`_ Minimum for holeSize in Doughnut charts too high
+* `#1291 <https://bitbucket.org/openpyxl/openpyxl/issues/1291>`_ Warning for MergedCells with comments
+* `#1296 <https://bitbucket.org/openpyxl/openpyxl/issues/1296>`_ Pagebreaks duplicated
+* `#1309 <https://bitbucket.org/openpyxl/openpyxl/issues/1309>`_ Workbook has no default CellStyle
+* `#1330 <https://bitbucket.org/openpyxl/openpyxl/issues/1330>`_ Workbooks with comments cannot be saved multiple times
+
+
+Pull Requests
+-------------
+
+* `PR344 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/345/>`_ Make sure NamedStyles number formats are correctly handled
+
+
+2.6.2 (2019-03-29)
+==================
+
+
+Bugfixes
+--------
+
+* `#1173 <https://bitbucket.org/openpyxl/openpyxl/issues/1173>`_ Workbook has no _date_formats attribute
+* `#1190 <https://bitbucket.org/openpyxl/openpyxl/issues/1190>`_ Cannot create charts for worksheets with quotes in the title
+* `#1228 <https://bitbucket.org/openpyxl/openpyxl/issues/1228>`_ MergedCells not removed when range is unmerged
+* `#1232 <https://bitbucket.org/openpyxl/openpyxl/issues/1232>`_ Link to pivot table lost from charts
+* `#1233 <https://bitbucket.org/openpyxl/openpyxl/issues/1233>`_ Chart colours change after saving
+* `#1236 <https://bitbucket.org/openpyxl/openpyxl/issues/1236>`_ Cannot use ws.cell in read-only mode with Python 2.7
+
+
+
+2.6.1 (2019-03-04)
+==================
+
+
+Bugfixes
+--------
+
+* `#1174 <https://bitbucket.org/openpyxl/openpyxl/issues/1174>`_ ReadOnlyCell.is_date does not work properly
+* `#1175 <https://bitbucket.org/openpyxl/openpyxl/issues/1175>`_ Cannot read Google Docs spreadsheet with a Pivot Table
+* `#1180 <https://bitbucket.org/openpyxl/openpyxl/issues/1180>`_ Charts created with openpyxl cannot be styled
+* `#1181 <https://bitbucket.org/openpyxl/openpyxl/issues/1181>`_ Cannot handle some numpy number types
+* `#1182 <https://bitbucket.org/openpyxl/openpyxl/issues/1182>`_ Exception when reading unknowable number formats
+* `#1186 <https://bitbucket.org/openpyxl/openpyxl/issues/1186>`_ Only last formatting rule for a range loaded
+* `#1191 <https://bitbucket.org/openpyxl/openpyxl/issues/1191>`_ Give MergedCell a `value` attribute
+* `#1193 <https://bitbucket.org/openpyxl/openpyxl/issues/1193>`_ Cannot process worksheets with comments
+* `#1197 <https://bitbucket.org/openpyxl/openpyxl/issues/1197>`_ Cannot process worksheets with both row and page breaks
+* `#1204 <https://bitbucket.org/openpyxl/openpyxl/issues/1204>`_ Cannot reset dimensions in ReadOnlyWorksheets
+* `#1211 <https://bitbucket.org/openpyxl/openpyxl/issues/1211>`_ Incorrect descriptor in ParagraphProperties
+* `#1213 <https://bitbucket.org/openpyxl/openpyxl/issues/1213>`_ Missing `hier` attribute in PageField raises an exception
+
+
+2.6.0 (2019-02-06)
+==================
+
+
+Bugfixes
+--------
+
+* `#1162 <https://bitbucket.org/openpyxl/openpyxl/issues/1162>`_ Exception on tables with names containing spaces.
+* `#1170 <https://bitbucket.org/openpyxl/openpyxl/issues/1170>`_ Cannot save files with existing images.
+
+
+2.6.-b1 (2019-01-08)
+====================
+
+
+Bugfixes
+--------
+
+* `#1141 <https://bitbucket.org/openpyxl/openpyxl/issues/1141>`_ Cannot use read-only mode with stream
+* `#1143 <https://bitbucket.org/openpyxl/openpyxl/issues/1143>`_ Hyperlinks always set on A1
+* `#1151 <https://bitbucket.org/openpyxl/openpyxl/issues/1151>`_ Internal row counter not initialised when reading files
+* `#1152 <https://bitbucket.org/openpyxl/openpyxl/issues/1152>`_ Exception raised on out of bounds date
+
+
+2.6-a1 (2018-11-21)
+===================
+
+
+Major changes
+-------------
+
+* Implement robust for merged cells so that these can be formatted the way
+  Excel does without confusion. Thanks to Magnus Schieder.
+
+
+Minor changes
+-------------
+
+* Add support for worksheet scenarios
+* Add read support for chartsheets
+* Add method for moving ranges of cells on a worksheet
+* Drop support for Python 3.4
+* Last version to support Python 2.7
+
+
+Deprecations
+------------
+
+* Type inference and coercion for cell values
+
+
+2.5.14 (2019-01-23)
 ===================
 
 
 Bugfixes
 --------
 
+* `#1150 <https://bitbucket.org/openpyxl/openpyxl/issues/1150>`_ Correct typo in LineProperties
 * `#1142 <https://bitbucket.org/openpyxl/openpyxl/issues/1142>`_ Exception raised for unsupported image files
+* `#1159 <https://bitbucket.org/openpyxl/openpyxl/issues/1159>`_ Exception raised when cannot find source for non-local cache object
 
 
 Pull Requests
@@ -13,6 +198,10 @@ Pull Requests
 
 * `PR301 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/301/>`_ Add support for nested brackets to the tokeniser
 * `PR303 <https://bitbucket.org/openpyxl/openpyxl/pull-requests/301/>`_ Improvements on handling nested brackets in the tokeniser
+
+
+2.5.13 (brown bag)
+==================
 
 
 2.5.12 (2018-11-29)

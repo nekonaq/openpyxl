@@ -1,16 +1,14 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 """
 Collection of utilities used within the package and also available for client code
 """
 import re
 
-from openpyxl.compat import basestring
 from .exceptions import CellCoordinatesException
 
 # constants
-COORD_RE = re.compile(r'^[$]?([A-Z]+)[$]?(\d+)$')
+COORD_RE = re.compile(r'^[$]?([A-Za-z]{1,3})[$]?(\d+)$')
 COL_RANGE = """[A-Z]{1,3}:[A-Z]{1,3}:"""
 ROW_RANGE = r"""\d+:\d+:"""
 RANGE_EXPR = r"""
@@ -33,30 +31,30 @@ def get_column_interval(start, end):
     The start and end columns can be either column letters or 1-based
     indexes.
     """
-    if isinstance(start, basestring):
+    if isinstance(start, str):
         start = column_index_from_string(start)
-    if isinstance(end, basestring):
+    if isinstance(end, str):
         end = column_index_from_string(end)
     return [get_column_letter(x) for x in range(start, end + 1)]
 
 
 def coordinate_from_string(coord_string):
     """Convert a coordinate string like 'B12' to a tuple ('B', 12)"""
-    match = COORD_RE.match(coord_string.upper())
+    match = COORD_RE.match(coord_string)
     if not match:
-        msg = 'Invalid cell coordinates (%s)' % coord_string
+        msg = f"Invalid cell coordinates ({coord_string})"
         raise CellCoordinatesException(msg)
     column, row = match.groups()
     row = int(row)
     if not row:
-        msg = "There is no row 0 (%s)" % coord_string
+        msg = f"There is no row 0 ({coord_string})"
         raise CellCoordinatesException(msg)
     return column, row
 
 
 def absolute_coordinate(coord_string):
     """Convert a coordinate to an absolute coordinate string (B12 -> $B$12)"""
-    m = ABSOLUTE_RE.match(coord_string.upper())
+    m = ABSOLUTE_RE.match(coord_string)
     if not m:
         raise ValueError("{0} is not a valid coordinate range".format(
             coord_string))
@@ -196,8 +194,9 @@ def coordinate_to_tuple(coordinate):
     """
     Convert an Excel style coordinate to (row, colum) tuple
     """
-    col, row = coordinate_from_string(coordinate)
-    return row, _COL_STRING_CACHE[col]
+    match = COORD_RE.split(coordinate)
+    col, row = match[1:3]
+    return int(row), _COL_STRING_CACHE[col]
 
 
 def range_to_tuple(range_string):

@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
@@ -33,7 +32,7 @@ class Break(Serialisable):
         self.pt = pt
 
 
-class PageBreak(Serialisable):
+class RowBreak(Serialisable):
 
     tagname = "rowBreaks"
 
@@ -80,3 +79,17 @@ class PageBreak(Serialisable):
             brk = Break(id=self.count+1)
         vals.append(brk)
         self.brk = vals
+
+
+PageBreak = RowBreak
+
+
+class ColBreak(RowBreak):
+
+    tagname = "colBreaks"
+
+    count = RowBreak.count
+    manualBreakCount = RowBreak.manualBreakCount
+    brk = RowBreak.brk
+
+    __attrs__ = RowBreak.__attrs__

@@ -1,8 +1,10 @@
+# Copyright (c) 2010-2020 openpyxl
+
+from warnings import warn
+
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.descriptors import (
-    Alias,
     Typed,
-    Sequence
 )
 from openpyxl.descriptors.sequence import NestedSequence
 from openpyxl.descriptors.excel import ExtensionList
@@ -10,6 +12,7 @@ from openpyxl.utils.indexed_list import IndexedList
 from openpyxl.xml.constants import ARC_STYLE, SHEET_MAIN_NS
 from openpyxl.xml.functions import fromstring
 
+from .builtins import styles
 from .colors import ColorList, COLOR_INDEX
 from .differential import DifferentialStyle
 from .table import TableStyleList
@@ -19,13 +22,12 @@ from .fonts import Font
 from .numbers import (
     NumberFormatList,
     BUILTIN_FORMATS,
-    BUILTIN_FORMATS_REVERSE
+    BUILTIN_FORMATS_MAX_SIZE,
+    BUILTIN_FORMATS_REVERSE,
+    is_date_format,
+    builtin_format_code
 )
-from .alignment import Alignment
-from .protection import Protection
 from .named_styles import (
-    NamedStyle,
-    _NamedCellStyle,
     _NamedCellStyleList
 )
 from .cell_style import CellStyle, CellStyleList
@@ -122,8 +124,12 @@ class Stylesheet(Serialisable):
         named_style.font = self.fonts[xf.fontId]
         named_style.fill = self.fills[xf.fillId]
         named_style.border = self.borders[xf.borderId]
-        if xf.numFmtId in self.custom_formats:
-            named_style.number_format = self.custom_formats[xf.numFmtId]
+        if xf.numFmtId < BUILTIN_FORMATS_MAX_SIZE:
+            formats = BUILTIN_FORMATS
+        else:
+            formats = self.custom_formats
+        if xf.numFmtId in formats:
+            named_style.number_format = formats[xf.numFmtId]
         if xf.alignment:
             named_style.alignment = xf.alignment
         if xf.protection:
@@ -146,17 +152,25 @@ class Stylesheet(Serialisable):
 
     def _normalise_numbers(self):
         """
-        Rebase numFmtIds with a floor of 164
+        Rebase custom numFmtIds with a floor of 164 when reading stylesheet
+        And index datetime formats
         """
+        date_formats = set()
         custom = self.custom_formats
         formats = self.number_formats
-        for style in self.cell_styles:
+        for idx, style in enumerate(self.cell_styles):
             if style.numFmtId in custom:
                 fmt = custom[style.numFmtId]
                 if fmt in BUILTIN_FORMATS_REVERSE: # remove builtins
                     style.numFmtId = BUILTIN_FORMATS_REVERSE[fmt]
-                    continue
-                style.numFmtId = formats.add(fmt) + 164
+                else:
+                    style.numFmtId = formats.add(fmt) + BUILTIN_FORMATS_MAX_SIZE
+            else:
+                fmt = builtin_format_code(style.numFmtId)
+            if is_date_format(fmt):
+                # Create an index of which styles refer to datetimes
+                date_formats.add(idx)
+        self.date_formats = date_formats
 
 
     def to_tree(self, tagname=None, idx=None, namespace=None):
@@ -189,9 +203,15 @@ def apply_stylesheet(archive, wb):
     # need to overwrite openpyxl defaults in case workbook has different ones
     wb._cell_styles = stylesheet.cell_styles
     wb._named_styles = stylesheet.named_styles
+    wb._date_formats = stylesheet.date_formats
 
     for ns in wb._named_styles:
         ns.bind(wb)
+
+    if not wb._named_styles:
+        normal = styles['Normal']
+        wb.add_named_style(normal)
+        warn("Workbook contains no default style, apply openpyxl's default")
 
     if stylesheet.colors is not None:
         wb._colors = stylesheet.colors.index
@@ -206,7 +226,7 @@ def write_stylesheet(wb):
 
     from .numbers import NumberFormat
     fmts = []
-    for idx, code in enumerate(wb._number_formats, 164):
+    for idx, code in enumerate(wb._number_formats, BUILTIN_FORMATS_MAX_SIZE):
         fmt = NumberFormat(idx, code)
         fmts.append(fmt)
 

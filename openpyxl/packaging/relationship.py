@@ -1,5 +1,5 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
+
 
 import posixpath
 
@@ -119,6 +119,8 @@ def get_rels_path(path):
     return filename
 
 
+from warnings import warn
+
 def get_dependents(archive, filename):
     """
     Normalise dependency file paths to absolute ones
@@ -127,7 +129,12 @@ def get_dependents(archive, filename):
     """
     src = archive.read(filename)
     node = fromstring(src)
-    rels = RelationshipList.from_tree(node)
+    try:
+        rels = RelationshipList.from_tree(node)
+    except TypeError:
+        msg = "{0} contains invalid dependency definitions".format(filename)
+        warn(msg)
+        rels = RelationshipList()
     folder = posixpath.dirname(filename)
     parent = posixpath.split(folder)[0]
     for r in rels.Relationship:
@@ -150,7 +157,10 @@ def get_rel(archive, deps, id=None, cls=None):
     if id is not None:
         rel = deps[id]
     else:
-        rel = next(deps.find(cls.rel_type))
+        try:
+            rel = next(deps.find(cls.rel_type))
+        except StopIteration: # no known dependency
+            return
 
     path = rel.target
     src = archive.read(path)

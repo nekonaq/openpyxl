@@ -1,5 +1,3 @@
-# coding=utf8
-from __future__ import absolute_import
 # copyright 2010-2015 openpyxl
 
 
@@ -277,9 +275,9 @@ class TestRule:
         rule = Rule(type="cellIs", priority=10, formula=[b"D\xc3\xbcsseldorf".decode("utf-8")])
 
         xml = tostring(rule.to_tree())
-        expected = """
+        expected = b"""
         <cfRule priority="10" type="cellIs">
-          <formula>Düsseldorf</formula>
+          <formula>D\xc3\xbcsseldorf</formula>
         </cfRule>
         """
         diff = compare_xml(xml, expected)

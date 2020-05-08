@@ -18,10 +18,10 @@ class Tokenizer(object):
     """
     A tokenizer for Excel worksheet formulae.
 
-    Converts a unicode string representing an Excel formula (in A1 notation)
+    Converts a str string representing an Excel formula (in A1 notation)
     into a sequence of `Token` objects.
 
-    `formula`: The unicode string to tokenize
+    `formula`: The str string to tokenize
 
     Tokenizer defines a method `._parse()` to parse the formula into tokens,
     which can then be accessed through the `.items` attribute.
@@ -112,9 +112,7 @@ class Tokenizer(object):
         match = regex.match(self.formula[self.offset:])
         if match is None:
             subtype = "string" if delim == '"' else 'link'
-            raise TokenizerError(
-                "Reached end of formula while parsing %s in %s" %
-                (subtype, self.formula))
+            raise TokenizerError(f"Reached end of formula while parsing {subtype} in {self.formula}")
         match = match.group(0)
         if delim == '"':
             self.items.append(Token.make_operand(match))
@@ -131,18 +129,21 @@ class Tokenizer(object):
 
         """
         assert self.formula[self.offset] == '['
-        lefts = [(t.start(), 1) for t in re.finditer(r"\[", self.formula)]
-        rights = [(t.start(), -1) for t in re.finditer(r"\]", self.formula)]
+        lefts = [(t.start(), 1) for t in
+                 re.finditer(r"\[", self.formula[self.offset:])]
+        rights = [(t.start(), -1) for t in
+                  re.finditer(r"\]", self.formula[self.offset:])]
 
         open_count = 0
         for idx, open_close in sorted(lefts + rights):
             open_count += open_close
             if open_count == 0:
                 outer_right = idx + 1
-                self.token.append(self.formula[self.offset:outer_right])
-                return outer_right - self.offset
+                self.token.append(
+                    self.formula[self.offset:self.offset + outer_right])
+                return outer_right
 
-        raise TokenizerError("Encountered unmatched '[' in %s" % self.formula)
+        raise TokenizerError(f"Encountered unmatched '[' in {self.formula}")
 
     def _parse_error(self):
         """
@@ -160,9 +161,7 @@ class Tokenizer(object):
                 self.items.append(Token.make_operand(''.join(self.token) + err))
                 del self.token[:]
                 return len(err)
-        raise TokenizerError(
-            "Invalid error code at position %d in '%s'" %
-            (self.offset, self.formula))
+        raise TokenizerError(f"Invalid error code at position {self.offset} in '{self.formula}'")
 
     def _parse_whitespace(self):
         """
@@ -305,9 +304,7 @@ class Tokenizer(object):
 
         """
         if self.token and self.token[-1] not in can_follow:
-            raise TokenizerError(
-                "Unexpected character at position %d in '%s'" %
-                (self.offset, self.formula))
+            raise TokenizerError(f"Unexpected character at position {self.offset} in '{self.formula}'")
 
     def save_token(self):
         """If there's a token being parsed, add it to the item list."""

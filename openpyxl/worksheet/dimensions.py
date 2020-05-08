@@ -1,14 +1,14 @@
-from __future__ import absolute_import
-# Copyright (c) 2010-2018 openpyxl
+# Copyright (c) 2010-2020 openpyxl
 
 from copy import copy
 
-from openpyxl.compat import safe_string, deprecated
+from openpyxl.compat import safe_string
 from openpyxl.utils import (
     get_column_interval,
     column_index_from_string,
     range_boundaries,
 )
+from openpyxl.utils.units import DEFAULT_COLUMN_WIDTH
 from openpyxl.descriptors import (
     Integer,
     Float,
@@ -19,8 +19,6 @@ from openpyxl.descriptors import (
 )
 from openpyxl.descriptors.serialisable import Serialisable
 from openpyxl.styles.styleable import StyleableObject
-from openpyxl.styles.cell_style import StyleArray
-
 from openpyxl.utils.bound_dictionary import BoundDictionary
 from openpyxl.xml.functions import Element
 
@@ -123,7 +121,7 @@ class RowDimension(Dimension):
 class ColumnDimension(Dimension):
     """Information about the display properties of a column."""
 
-    width = Float(allow_none=True)
+    width = Float()
     bestFit = Bool()
     auto_size = Alias('bestFit')
     index = String()
@@ -137,7 +135,7 @@ class ColumnDimension(Dimension):
     def __init__(self,
                  worksheet,
                  index='A',
-                 width=None,
+                 width=DEFAULT_COLUMN_WIDTH,
                  bestFit=False,
                  hidden=False,
                  outlineLevel=0,
@@ -167,7 +165,7 @@ class ColumnDimension(Dimension):
     @property
     def customWidth(self):
         """Always true if there is a width for the column"""
-        return self.width is not None
+        return bool(self.width)
 
 
     def reindex(self):
@@ -180,7 +178,7 @@ class ColumnDimension(Dimension):
 
     def to_tree(self):
         attrs = dict(self)
-        if set(attrs) != set(['min', 'max']):
+        if attrs.keys() != {'min', 'max'}:
             return Element("col", **attrs)
 
 
@@ -230,20 +228,19 @@ class DimensionHolder(BoundDictionary):
             return value.min
 
         el = Element('cols')
-        obj = None
         outlines = set()
 
         for col in sorted(self.values(), key=sorter):
             obj = col.to_tree()
-            outlines.add(col.outlineLevel)
             if obj is not None:
+                outlines.add(col.outlineLevel)
                 el.append(obj)
 
         if outlines:
             self.max_outline = max(outlines)
 
-        if obj is not None:
-            return el
+        if len(el):
+            return el # must have at least one child
 
 
 class SheetFormatProperties(Serialisable):
