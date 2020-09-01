@@ -54,6 +54,9 @@ def _convert(expected_type, value):
         try:
             value = expected_type(value)
         except:
+            # import pdb; pdb.set_trace()
+            if expected_type == int and value is None:
+                return 0
             raise TypeError('expected ' + str(expected_type))
     return value
 
